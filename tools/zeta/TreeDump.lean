@@ -44,6 +44,8 @@ structure Node where
   children : Array Nat := #[]
   /-- The binder name each child fills in `head` (the field or hypothesis it proves). -/
   labels : Array String := #[]
+  /-- For `kernel` leaves: the head of the expression the kernel must evaluate (e.g. `Nat.ble`). -/
+  reduces : Option String := none
   deriving ToJson
 
 structure St where
@@ -92,25 +94,36 @@ def pp (e : Expr) (k : Nat) : MetaM String := do
 
 /-- Instantiate `ty` at `args`, returning the conclusion and, for each argument, whether its
 binder type is a proposition (so the argument is a proof to walk). -/
-def splitArgs (ty : Expr) (args : Array Expr) : MetaM (Expr × Array (Bool × Name)) := do
+def splitArgs (ty : Expr) (args : Array Expr) : MetaM (Expr × Array (Bool × Name × Expr)) := do
   let mut t := ty
-  let mut isPf : Array (Bool × Name) := #[]
+  let mut isPf : Array (Bool × Name × Expr) := #[]
   for a in args do
     let t' ← whnfR t
     match t' with
     | .forallE nm d b _ =>
-      isPf := isPf.push ((← (try isProp d catch _ => pure false)), nm)
+      isPf := isPf.push ((← (try isProp d catch _ => pure false)), nm, d)
       t := b.instantiate1 a
-    | _ => isPf := isPf.push (false, .anonymous)
+    | _ => isPf := isPf.push (false, .anonymous, mkConst ``True)
   return (t, isPf)
 
-partial def walk (e : Expr) : M Nat := do
+/-- The left side of `lhs = rhs`, `lhs ≤ rhs`, … : what the kernel has to evaluate for a refl leaf. -/
+def reducedHead (t : Expr) : Option String :=
+  let a := t.getAppArgs
+  let lhs := if t.isAppOf ``Eq && a.size == 3 then a[1]! else t
+  lhs.getAppFn.constName?.map (·.toString)
+
+partial def walk (e : Expr) (expected : Option Expr := none) : M Nat := do
   let e := e.consumeMData
-  if let some i := (← get).seen[e]? then return i
+  -- a refl leaf proves whatever its parent asks for, so it is keyed by that statement too
+  let isKernelLeaf := match e.getAppFn with | .const c _ => kernelLeaf c | _ => false
+  let key := match expected, isKernelLeaf with
+    | some t, true => mkApp2 (mkConst `TreeDump.kernelKey) e t
+    | _, _ => e
+  if let some i := (← get).seen[key]? then return i
   let cfg ← read
   let id := (← get).nodes.size
   -- reserve the slot so cycles through sharing cannot recurse forever
-  modify fun s => { s with seen := s.seen.insert e id,
+  modify fun s => { s with seen := s.seen.insert key id,
                            nodes := s.nodes.push { id, head := "", kind := "pending", statement := "" } }
   let fn := e.getAppFn
   let args := e.getAppArgs
@@ -120,8 +133,11 @@ partial def walk (e : Expr) : M Nat := do
     let ci ← getConstInfo c
     let (concl, isPf) ← splitArgs (ci.instantiateTypeLevelParams us) args
     let concl ← instantiateMVars concl
+    -- for a refl leaf, show what the parent needs proved (e.g. `Nat.ble a b = true`), not `true = true`
+    let shown := if isKernelLeaf then (expected.getD concl) else concl
     node := { node with head := c.toString, nargs := args.size,
-                        statement := ← pp concl cfg.stmtChars,
+                        statement := ← pp shown cfg.stmtChars,
+                        reduces := if isKernelLeaf then reducedHead shown else none,
                         kind := if kernelLeaf c then "kernel" else if isAux c then "sealed" else "lemma" }
     -- enclosure fields
     let cf := concl.getAppFn
@@ -142,8 +158,8 @@ partial def walk (e : Expr) : M Nat := do
         else
           node := { node with kind := "sealed-body-unavailable" }
       else if node.kind == "lemma" then
-        for a in args, (p, nm) in isPf do
-          if p then kids := kids.push (← walk a); labels := labels.push nm.toString
+        for a in args, (p, nm, d) in isPf do
+          if p then kids := kids.push (← walk a (some (← instantiateMVars d))); labels := labels.push nm.toString
       node := { node with children := kids, labels }
     else
       node := { node with kind := node.kind ++ "-truncated" }
