@@ -1,40 +1,52 @@
 /-
-Proof-tree dump for kernel-checked numerical certificates (core Lean only; no Mathlib).
+Proof-tree dump for kernel-checked numerical certificates (core Lean only; no Mathlib). v2.
 
-`dumpTree e` walks a proof term and records one node per lemma application:
-the lemma, the statement it proves at that point (its type instantiated at the arguments),
-and the children that are themselves proofs. Values passed to the lemma (reals, naturals,
-expressions) are recorded in the statement, not as children. Three node kinds matter for
-the zeta certificates:
+`dumpTree e` walks a proof term and records one node per constant-headed application: the
+constant, its declaration kind, the statement it proves there (its type instantiated at its
+arguments), and the child proofs, each child labelled by the hypothesis it fills and keyed by the
+statement the parent requires at that position. Value arguments are not children; they appear
+inside statements.
 
-* `lemma`: an ordinary theorem applied to arguments;
-* `sealed`: a module auxiliary lemma (a checkpoint or a cached closed enclosure); its body
-  is walked once and shared by every citation;
-* `kernel`: `Eq.refl`/`rfl`-style leaves, where the kernel decides the statement by evaluation
-  rather than by a lemma.
+Leaf kinds (refl-style proofs, where no lemma is applied):
+* `identity`: the required statement is `a = a` with identical sides; nothing is computed;
+* `boolean_check`: the required statement is `f … = true` (or `false`); the kernel must reduce
+  `f …` (for example `Nat.ble a b`, `Enclosure.mulLitOk …`) to the constructor;
+* `conversion`: any other refl, accepted by definitional unfolding;
+* `decide`: `of_decide_eq_true`.
+`obligationHead` names the head constant of what must reduce. It is the statement's syntax, not a
+record of execution.
 
-If the statement is `Real.IsNear x neg cn cd rn rd` (|x − ±cn/cd| ≤ rn/rd) the node also
-carries the enclosure's centre and radius; `Complex.IsNear` carries both rectangles.
+Enclosures: when the statement is `Real.IsNear x neg cn cd rn rd` (|x − ±cn/cd| ≤ rn/rd), or
+`Complex.IsNear`, the coordinates are given as decimal strings (never JSON numbers, which lose
+precision beyond 2^53). A coordinate that is a closed `Nat` expression rather than a literal is
+normalised by `Meta.evalNat`; `status` says `literal`, `normalized` or `unresolved`.
 
-Output is JSON: `{root, nodes: [{id, head, kind, statement, subject?, re?, im?, children}]}`.
-Shared subproofs appear once (keyed by the term), so the result is a DAG.
+Generated declarations (`mkAuxLemma`, `_proof_N`) are `aux` nodes; their bodies are walked once.
+Shared subproofs appear once, so the output is a DAG. `maxNodes` is checked before allocation and
+every node not fully expanded because of the cap is listed in `frontier`.
 -/
 import Lean
 open Lean Meta
 
 namespace TreeDump
 
+structure Coord where
+  value : Option String
+  status : String
+  deriving ToJson
+
 structure Encl where
-  neg : Bool
-  cn : Nat
-  cd : Nat
-  rn : Nat
-  rd : Nat
+  neg : Option Bool
+  cn : Coord
+  cd : Coord
+  rn : Coord
+  rd : Coord
   deriving ToJson
 
 structure Node where
   id : Nat
   head : String
+  declKind : String := ""
   kind : String
   statement : String
   subject : Option String := none
@@ -42,46 +54,57 @@ structure Node where
   im : Option Encl := none
   nargs : Nat := 0
   children : Array Nat := #[]
-  /-- The binder name each child fills in `head` (the field or hypothesis it proves). -/
+  /-- The binder name each child fills. -/
   labels : Array String := #[]
-  /-- For `kernel` leaves: the head of the expression the kernel must evaluate (e.g. `Nat.ble`). -/
-  reduces : Option String := none
+  /-- For leaves: the head of what must reduce (syntax, not an execution record). -/
+  obligationHead : Option String := none
   deriving ToJson
 
 structure St where
   nodes : Array Node := #[]
   seen : Std.HashMap Expr Nat := {}
+  frontier : Array Nat := #[]
 
 structure Cfg where
-  maxNodes : Nat := 6000
+  maxNodes : Nat := 60000
   stmtChars : Nat := 400
 
 abbrev M := ReaderT Cfg (StateRefT St MetaM)
 
-def natOf? (e : Expr) : Option Nat :=
+def litNat? (e : Expr) : Option Nat :=
   match e.consumeMData with
   | .lit (.natVal n) => some n
   | e => match e.nat? with
     | some n => some n
     | none => e.rawNatLit?
 
+def coordOf (e : Expr) : MetaM Coord := do
+  if let some n := litNat? e then return { value := some (toString n), status := "literal" }
+  match ← (try Meta.evalNat e catch _ => pure none) with
+  | some n => return { value := some (toString n), status := "normalized" }
+  | none => return { value := none, status := "unresolved" }
+
 def boolOf? (e : Expr) : Option Bool :=
   if e.isConstOf ``Bool.true then some true
   else if e.isConstOf ``Bool.false then some false else none
 
-def enclOf? (neg cn cd rn rd : Expr) : Option Encl := do
-  return { neg := ← boolOf? neg, cn := ← natOf? cn, cd := ← natOf? cd,
-           rn := ← natOf? rn, rd := ← natOf? rd }
+def enclOf (neg cn cd rn rd : Expr) : MetaM Encl :=
+  return { neg := boolOf? neg, cn := ← coordOf cn, cd := ← coordOf cd, rn := ← coordOf rn, rd := ← coordOf rd }
 
 def endsWith (n : Name) (s : String) : Bool := n.toString.endsWith s
 
-/-- Auxiliary lemmas made by `mkAuxLemma` (checkpoints and cached closed enclosures). -/
-def isAux (n : Name) : Bool :=
-  (n.toString.splitOn "_auxLemma").length > 1 || n.isInternal
+def declKindOf (ci : ConstantInfo) : String :=
+  match ci with
+  | .thmInfo _ => "theorem" | .defnInfo _ => "def" | .axiomInfo _ => "axiom"
+  | .opaqueInfo _ => "opaque" | .ctorInfo _ => "constructor" | .recInfo _ => "recursor"
+  | .inductInfo _ => "inductive" | .quotInfo _ => "quot"
 
-def kernelLeaf (n : Name) : Bool :=
-  n == ``Eq.refl || n == ``rfl || n == ``HEq.refl || endsWith n "reflBoolTrue"
-    || n == ``of_decide_eq_true
+/-- Generated declarations: `mkAuxLemma` lemmas and `_proof_N` abstractions. -/
+def isAux (n : Name) : Bool :=
+  (n.toString.splitOn "_auxLemma").length > 1 || (n.toString.splitOn "._proof_").length > 1 || n.isInternal
+
+def reflLike (n : Name) : Bool :=
+  n == ``Eq.refl || n == ``rfl || n == ``HEq.refl || endsWith n "reflBoolTrue" || n == ``of_decide_eq_true
 
 def pp (e : Expr) (k : Nat) : MetaM String := do
   let s ← try
@@ -92,37 +115,51 @@ def pp (e : Expr) (k : Nat) : MetaM String := do
   let s := s.replace "\n" " "
   return if s.length > k then (s.take k).toString ++ " …" else s
 
-/-- Instantiate `ty` at `args`, returning the conclusion and, for each argument, whether its
-binder type is a proposition (so the argument is a proof to walk). -/
+/-- Classify a refl-style leaf by the statement its parent requires. -/
+def leafKind (c : Name) (req : Expr) : String × Option String :=
+  if c == ``of_decide_eq_true then ("decide", req.getAppFn.constName?.map (·.toString)) else
+  let a := req.getAppArgs
+  if req.isAppOf ``Eq && a.size == 3 then
+    let lhs := a[1]!
+    let rhs := a[2]!
+    let h := lhs.getAppFn.constName?.map (·.toString)
+    if lhs == rhs then ("identity", h)
+    else if (boolOf? rhs).isSome then ("boolean_check", h)
+    else ("conversion", h)
+  else ("conversion", req.getAppFn.constName?.map (·.toString))
+
+/-- Instantiate `ty` at `args`; for each argument, whether it is a proof, its binder name and the
+required type at that position. -/
 def splitArgs (ty : Expr) (args : Array Expr) : MetaM (Expr × Array (Bool × Name × Expr)) := do
   let mut t := ty
-  let mut isPf : Array (Bool × Name × Expr) := #[]
+  let mut out := #[]
   for a in args do
-    let t' ← whnfR t
-    match t' with
+    match ← whnfR t with
     | .forallE nm d b _ =>
-      isPf := isPf.push ((← (try isProp d catch _ => pure false)), nm, d)
+      out := out.push ((← (try isProp d catch _ => pure false)), nm, d)
       t := b.instantiate1 a
-    | _ => isPf := isPf.push (false, .anonymous, mkConst ``True)
-  return (t, isPf)
+    | _ => out := out.push (false, .anonymous, mkConst ``True)
+  return (t, out)
 
-/-- The left side of `lhs = rhs`, `lhs ≤ rhs`, … : what the kernel has to evaluate for a refl leaf. -/
-def reducedHead (t : Expr) : Option String :=
-  let a := t.getAppArgs
-  let lhs := if t.isAppOf ``Eq && a.size == 3 then a[1]! else t
-  lhs.getAppFn.constName?.map (·.toString)
+def isNearFields (concl : Expr) : MetaM (Option (Expr × Encl × Option Encl)) := do
+  let some h := concl.getAppFn.constName? | return none
+  let ca := concl.getAppArgs
+  if endsWith h "Real.IsNear" && ca.size == 6 then
+    return some (ca[0]!, ← enclOf ca[1]! ca[2]! ca[3]! ca[4]! ca[5]!, none)
+  if endsWith h "Complex.IsNear" && ca.size == 11 then
+    return some (ca[0]!, ← enclOf ca[1]! ca[2]! ca[3]! ca[4]! ca[5]!,
+                 some (← enclOf ca[6]! ca[7]! ca[8]! ca[9]! ca[10]!))
+  return none
 
-partial def walk (e : Expr) (expected : Option Expr := none) : M Nat := do
+partial def walk (e : Expr) (required : Option Expr := none) : M Nat := do
   let e := e.consumeMData
-  -- a refl leaf proves whatever its parent asks for, so it is keyed by that statement too
-  let isKernelLeaf := match e.getAppFn with | .const c _ => kernelLeaf c | _ => false
-  let key := match expected, isKernelLeaf with
-    | some t, true => mkApp2 (mkConst `TreeDump.kernelKey) e t
+  let leaf := match e.getAppFn with | .const c _ => reflLike c | _ => false
+  let key := match required, leaf with
+    | some t, true => mkApp2 (mkConst `TreeDump.leafKey) e t
     | _, _ => e
   if let some i := (← get).seen[key]? then return i
   let cfg ← read
   let id := (← get).nodes.size
-  -- reserve the slot so cycles through sharing cannot recurse forever
   modify fun s => { s with seen := s.seen.insert key id,
                            nodes := s.nodes.push { id, head := "", kind := "pending", statement := "" } }
   let fn := e.getAppFn
@@ -131,48 +168,72 @@ partial def walk (e : Expr) (expected : Option Expr := none) : M Nat := do
   match fn with
   | .const c us =>
     let ci ← getConstInfo c
-    let (concl, isPf) ← splitArgs (ci.instantiateTypeLevelParams us) args
+    let (concl, parts) ← splitArgs (ci.instantiateTypeLevelParams us) args
     let concl ← instantiateMVars concl
-    -- for a refl leaf, show what the parent needs proved (e.g. `Nat.ble a b = true`), not `true = true`
-    let shown := if isKernelLeaf then (expected.getD concl) else concl
-    node := { node with head := c.toString, nargs := args.size,
-                        statement := ← pp shown cfg.stmtChars,
-                        reduces := if isKernelLeaf then reducedHead shown else none,
-                        kind := if kernelLeaf c then "kernel" else if isAux c then "sealed" else "lemma" }
-    -- enclosure fields
-    let cf := concl.getAppFn
-    let ca := concl.getAppArgs
-    if let .const h _ := cf then
-      if endsWith h "Real.IsNear" && ca.size == 6 then
-        node := { node with subject := some (← pp ca[0]! 200), re := enclOf? ca[1]! ca[2]! ca[3]! ca[4]! ca[5]! }
-      else if endsWith h "Complex.IsNear" && ca.size == 11 then
-        node := { node with subject := some (← pp ca[0]! 200),
-                            re := enclOf? ca[1]! ca[2]! ca[3]! ca[4]! ca[5]!,
-                            im := enclOf? ca[6]! ca[7]! ca[8]! ca[9]! ca[10]! }
-    if (← get).nodes.size < cfg.maxNodes then
+    node := { node with head := c.toString, declKind := declKindOf ci, nargs := args.size }
+    if leaf then
+      let req := required.getD concl
+      let (k, h) := leafKind c req
+      node := { node with kind := k, obligationHead := h, statement := ← pp req cfg.stmtChars }
+    else
+      node := { node with kind := if isAux c then "aux" else "lemma", statement := ← pp concl cfg.stmtChars }
+      if let some (x, re, im?) ← isNearFields concl then
+        node := { node with subject := some (← pp x 200), re := some re, im := im? }
       let mut kids := #[]
       let mut labels := #[]
-      if node.kind == "sealed" then
+      let mut capped := false
+      if node.kind == "aux" then
         if let some v := ci.value? (allowOpaque := true) then
-          kids := kids.push (← walk v); labels := labels.push "body"
+          let v := (v.instantiateLevelParams ci.levelParams us).beta args
+          if (← get).nodes.size < cfg.maxNodes then
+            kids := kids.push (← walk v)
+            labels := labels.push "body"
+          else capped := true
         else
-          node := { node with kind := "sealed-body-unavailable" }
-      else if node.kind == "lemma" then
-        for a in args, (p, nm, d) in isPf do
-          if p then kids := kids.push (← walk a (some (← instantiateMVars d))); labels := labels.push nm.toString
+          node := { node with kind := "aux-body-unavailable" }
+      else
+        for a in args, (p, nm, d) in parts do
+          if p then
+            if (← get).nodes.size < cfg.maxNodes then
+              kids := kids.push (← walk a (some (← instantiateMVars d)))
+              labels := labels.push nm.toString
+            else capped := true
       node := { node with children := kids, labels }
-    else
-      node := { node with kind := node.kind ++ "-truncated" }
+      if capped then modify fun s => { s with frontier := s.frontier.push id }
   | _ =>
-    node := { node with head := s!"({fn.ctorName})", statement := ← pp (← inferType e) cfg.stmtChars }
+    node := { node with head := s!"({fn.ctorName})", kind := "unsupported",
+                        statement := ← pp (← inferType e) cfg.stmtChars }
+    modify fun s => { s with frontier := s.frontier.push id }
   modify fun s => { s with nodes := s.nodes.set! id node }
   return id
 
+def kindCounts (ns : Array Node) : Json :=
+  let m := ns.foldl (fun (m : Std.HashMap String Nat) n => m.insert n.kind (m.getD n.kind 0 + 1)) {}
+  Json.mkObj (m.toList.map fun (k, v) => (k, toJson v))
+
 def dumpTree (e : Expr) (cfg : Cfg := {}) : MetaM Json := do
   let (root, st) ← (walk e |>.run cfg).run {}
-  let kinds := st.nodes.foldl (fun (m : Std.HashMap String Nat) n => m.insert n.kind (m.getD n.kind 0 + 1)) {}
-  return Json.mkObj [("root", toJson root), ("node_count", toJson st.nodes.size),
-    ("kinds", Json.mkObj (kinds.toList.map fun (k, v) => (k, toJson v))),
-    ("nodes", toJson st.nodes)]
+  return Json.mkObj [("schema", toJson "zeta-tree-v2"), ("root", toJson root),
+    ("node_count", toJson st.nodes.size), ("kinds", kindCounts st.nodes),
+    ("frontier", toJson st.frontier), ("nodes", toJson st.nodes)]
+
+/-- The `IsNear` enclosures reachable from `e` through at most `depth` proof steps without
+passing through another enclosure: the values a certificate field's check is about. -/
+partial def nearBelow (e : Expr) (depth : Nat) (path : List String) (acc : Array Json) :
+    MetaM (Array Json) := do
+  let e := e.consumeMData
+  let .const c us := e.getAppFn | return acc
+  if reflLike c then return acc
+  let ci ← getConstInfo c
+  let args := e.getAppArgs
+  let (concl, parts) ← splitArgs (ci.instantiateTypeLevelParams us) args
+  if let some (x, re, _) ← isNearFields (← instantiateMVars concl) then
+    return acc.push (Json.mkObj [("path", toJson path.reverse), ("via", toJson c.toString),
+      ("subject", toJson (← pp x 200)), ("encl", toJson re)])
+  if depth == 0 then return acc
+  let mut acc := acc
+  for a in args, (p, nm, _) in parts do
+    if p then acc ← nearBelow a (depth - 1) (nm.toString :: path) acc
+  return acc
 
 end TreeDump

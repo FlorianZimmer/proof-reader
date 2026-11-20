@@ -1,84 +1,117 @@
 /-
-Driver: assembled after the zeta imports and TreeDump (see .github/workflows/zeta-trees.yml),
-run from the root of a built smmercuri/zeta checkout with `lake env lean`.
+Driver, v2: assembled after one batch import and TreeDump (see .github/workflows/zeta-trees.yml),
+run from the root of a built smmercuri/zeta checkout with `lake env lean`. One process per batch.
 
-For the first rows of Euler–Maclaurin batch 1 and Riemann–Siegel batch 1 it
+Environment:
+  ZETA_BATCH       the batch theorem, e.g. Zeta.Certificates.RiemannSiegel.Batch0034.batch
+  ZETA_METHOD      euler_maclaurin | riemann_siegel
+  ZETA_DETAIL      comma-separated zero-based row offsets in this batch to dump in full (may be empty)
+  ZETA_OUT         output folder (default `out`)
 
-1. reads the compiled proof of each batch theorem (the bundle the kernel checked) and takes the
-   certificate terms out of it in row order (`source = "compiled_batch"`);
-2. if the compiled proof is not visible from this import, rebuilds the same rows with the
-   authors' own builders (`buildBundle` / `buildBundleRS`) and says so (`source = "rebuilt"`);
-3. writes one JSON per certificate to `$ZETA_TREES_OUT` (default `trees/`).
+Reads only the compiled proof of the batch theorem (private olean data; this file is not a
+`module`, so Lean loads the private level). It never rebuilds a certificate: a missing proof body
+is reported as an error. The bundle's list of certificates is decoded by its structure
+(`CertifiedZeroIntervals.ofCertifiedEM/RS pairs disj`, `List.cons`, `PSigma.mk I cert`), so each
+certificate is bound to its list position and exact endpoints.
 
-ZETA_TREES_ROWS (default 3) sets how many rows per method; ZETA_TREES_MAX (default 60000) caps
-nodes per tree.
+Writes `<batch>.summary.json` (every row: position, endpoints, variant, and the enclosures each
+certificate field is about) and `<batch>.row<k>.tree.json` for each detailed offset.
 -/
 open Lean Meta Elab Command TreeDump
 
-/-- `…Certificate.mk` / `…Certificate₀.mk` applications in order of appearance, deduplicated. -/
-partial def collectCerts (e : Expr) (n : Nat) : StateT (Array Expr) MetaM Unit := do
-  if (← get).size ≥ n then return
+def envStr (k d : String) : IO String := return (← IO.getEnv k).getD d
+
+/-- First subterm (preorder) whose head constant's name ends with one of `suffixes`. -/
+partial def findHead (e : Expr) (suffixes : List String) : Option Expr :=
   let e := e.consumeMData
-  if let .const c _ := e.getAppFn then
-    let s := c.toString
-    if s.endsWith "Certificate.mk" || s.endsWith "Certificate₀.mk" then
-      unless (← get).contains e do modify (·.push e)
-      return
-  match e with
-  | .app f a => collectCerts f n; collectCerts a n
-  | .letE _ _ v b _ => collectCerts v n; collectCerts b n
-  | .lam _ _ b _ => collectCerts b n
-  | .proj _ _ b => collectCerts b n
-  | _ => pure ()
+  match e.getAppFn with
+  | .const c _ => if suffixes.any (c.toString.endsWith ·) then some e else descend e
+  | _ => descend e
+where
+  descend (e : Expr) : Option Expr := match e with
+    | .app f a => (findHead f suffixes).orElse fun _ => findHead a suffixes
+    | .lam _ _ b _ => findHead b suffixes
+    | .letE _ _ v b _ => (findHead v suffixes).orElse fun _ => findHead b suffixes
+    | .mdata _ b => findHead b suffixes
+    | _ => none
 
-/-- `sfrac false m d` → `(m, d)`. -/
-def sfracOf? (e : Expr) : Option (Nat × Nat) :=
-  let a := e.consumeMData.getAppArgs
-  if a.size == 3 then do return (← natOf? a[1]!, ← natOf? a[2]!) else none
+/-- Elements of a literal `List.cons … (List.cons … List.nil)`. -/
+partial def listElems (e : Expr) (acc : Array Expr := #[]) : MetaM (Array Expr) := do
+  let e := e.consumeMData
+  if e.isAppOfArity ``List.cons 3 then listElems e.appArg! (acc.push e.appFn!.appArg!)
+  else if e.isAppOfArity ``List.nil 1 then return acc
+  else throwError "listElems: not a literal list at {acc.size}: {e.getAppFn}"
 
-def endpointsOf (cert : Expr) : Json :=
-  let I := cert.getAppArgs[0]!.consumeMData
+/-- `sfrac neg m d` → JSON with exact decimal strings. -/
+def sfracJson (e : Expr) : Json :=
+  let e := e.consumeMData
+  let a := e.getAppArgs
+  if (e.getAppFn.constName?.map (·.toString.endsWith "sfrac")).getD false && a.size == 3 then
+    Json.mkObj [("neg", toJson (boolOf? a[0]!)), ("num", toJson ((litNat? a[1]!).map toString)),
+      ("den", toJson ((litNat? a[2]!).map toString))]
+  else Json.mkObj [("error", toJson "not an sfrac literal")]
+
+def intervalJson (I : Expr) : Json :=
+  let I := I.consumeMData
   let a := I.getAppArgs
-  let ep (k : Nat) : Json := match a[k]? >>= sfracOf? with
-    | some (m, d) => Json.mkObj [("num", toJson m), ("den", toJson d)]
-    | none => Json.null
-  Json.mkObj [("left", ep 0), ("right", ep 1), ("interval_head", toJson I.getAppFn.constName?.get!.toString),
-    ("interval_nat_params", toJson ((a.extract 3 a.size).filterMap natOf?))]
+  Json.mkObj [("ctor", toJson (I.getAppFn.constName?.map (·.toString))),
+    ("left", if a.size > 0 then sfracJson a[0]! else Json.null),
+    ("right", if a.size > 1 then sfracJson a[1]! else Json.null),
+    ("nat_params", toJson ((a.extract 3 a.size).map fun x => (litNat? x).map toString))]
 
-def envNat (k : String) (d : Nat) : IO Nat := return ((← IO.getEnv k).bind String.toNat?).getD d
+/-- Unwrap `Or.inl/Or.inr _ _ c` (Riemann–Siegel `Certified`) to the certificate and its variant. -/
+def unwrapVariant (cert : Expr) : Expr × String :=
+  let c := cert.consumeMData
+  if c.isAppOfArity ``Or.inl 3 then (c.appArg!, "Certificate (with the C1 correction; tried second)")
+  else if c.isAppOfArity ``Or.inr 3 then (c.appArg!, "Certificate0 (no C1 correction; tried first)")
+  else (c, "Certificate (Euler-Maclaurin)")
 
-def compiledValue? (n : Name) : MetaM (Option Expr) := do
-  let some ci := (← getEnv).find? n | return none
-  return ci.value? (allowOpaque := true)
-
-def dumpMethod (method : String) (batch : Name) (rebuild : Nat → MetaM Expr) : MetaM Unit := do
-  let rows ← envNat "ZETA_TREES_ROWS" 3
-  let maxNodes ← envNat "ZETA_TREES_MAX" 60000
-  let out : System.FilePath := ((← IO.getEnv "ZETA_TREES_OUT").getD "trees")
-  IO.FS.createDirAll out
-  let (src, e) ← match ← compiledValue? batch with
-    | some v => pure ("compiled_batch", v)
-    | none => do
-      IO.println s!"{method}: compiled proof of {batch} not visible from this import; rebuilding"
-      pure ("rebuilt", ← rebuild rows)
-  let ((), certs) ← (collectCerts e rows).run #[]
-  IO.println s!"{method}: {certs.size} certificates from {src}"
-  for cert in certs, i in [0:certs.size] do
-    let t0 ← IO.monoMsNow
-    let tree ← dumpTree cert { maxNodes }
-    let ms := (← IO.monoMsNow) - t0
-    let j := Json.mkObj [("method", toJson method), ("row", toJson (i + 1)), ("source", toJson src),
-      ("batch_theorem", toJson batch.toString), ("certificate_ctor", toJson cert.getAppFn.constName?.get!.toString),
-      ("endpoints", endpointsOf cert), ("walk_ms", toJson ms), ("tree", tree)]
-    let f := out / s!"{method}_row{i + 1}.json"
-    IO.FS.writeFile f j.compress
-    IO.println s!"  wrote {f} ({(tree.getObjValD "node_count").compress} nodes, {ms} ms)"
+def fieldSummary (mk : Expr) : MetaM Json := do
+  let .const c us := mk.getAppFn | return Json.null
+  let ci ← getConstInfo c
+  let (_, parts) ← splitArgs (ci.instantiateTypeLevelParams us) mk.getAppArgs
+  let mut fields := #[]
+  for a in mk.getAppArgs, (p, nm, _) in parts do
+    if p then
+      let nears ← nearBelow a 10 [] #[]
+      fields := fields.push (Json.mkObj [("field", toJson nm.toString), ("head", toJson (a.getAppFn.constName?.map (·.toString))),
+        ("enclosures", toJson nears)])
+  return toJson fields
 
 run_meta do
-  dumpMethod "euler_maclaurin" `Zeta.Certificates.EulerMaclaurin.Batch0001.batch fun n => do
-    Zeta.Certificates.buildBundle (Zeta.Certificates.parseRows
-      (← Zeta.Certificates.storeLines Zeta.Certificates.storeDir 0 n))
-  dumpMethod "riemann_siegel" `Zeta.Certificates.RiemannSiegel.Batch0001.batch fun n => do
-    let rows ← ofExcept <| Zeta.Certificates.parseRowsRS
-      (← Zeta.Certificates.storeLines Zeta.Certificates.storeDirRS 0 n) 0
-    Zeta.Certificates.buildBundleRS rows
+  let batch := (← envStr "ZETA_BATCH" "").toName
+  let method ← envStr "ZETA_METHOD" ""
+  let detail := ((← envStr "ZETA_DETAIL" "").splitOn ",").filterMap String.toNat?
+  let out : System.FilePath := ← envStr "ZETA_OUT" "out"
+  IO.FS.createDirAll out
+  let some ci := (← getEnv).find? batch | throwError "no declaration {batch}"
+  let some v := ci.value? (allowOpaque := true)
+    | throwError "{batch}: compiled proof body not visible from this import"
+  let some bundle := findHead v ["ofCertifiedEM", "ofCertifiedRS"]
+    | throwError "{batch}: no ofCertifiedEM/ofCertifiedRS application in the proof"
+  let pairs ← listElems bundle.getAppArgs[0]!
+  let t0 ← IO.monoMsNow
+  let mut rows := #[]
+  for pr in pairs, k in [0:pairs.size] do
+    let a := pr.consumeMData.getAppArgs  -- PSigma.mk α β I cert
+    let I := a[2]!
+    let (mk, variant) := unwrapVariant a[3]!
+    rows := rows.push (Json.mkObj [("offset", toJson k), ("interval", intervalJson I),
+      ("variant", toJson variant), ("certificate_ctor", toJson (mk.getAppFn.constName?.map (·.toString))),
+      ("fields", ← fieldSummary mk)])
+    if detail.contains k then
+      let s0 ← IO.monoMsNow
+      let tree ← dumpTree mk
+      let j := Json.mkObj [("schema", toJson "zeta-certificate-v2"), ("method", toJson method),
+        ("batch_theorem", toJson batch.toString), ("offset", toJson k), ("source", toJson "compiled_batch"),
+        ("interval", intervalJson I), ("variant", toJson variant),
+        ("certificate_ctor", toJson (mk.getAppFn.constName?.map (·.toString))),
+        ("extraction_ms", toJson ((← IO.monoMsNow) - s0)), ("tree", tree)]
+      let f := out / s!"{batch}.row{k}.tree.json"
+      IO.FS.writeFile f j.compress
+      IO.println s!"  detail {f}: {(tree.getObjValD "node_count").compress} nodes, frontier {(tree.getObjValD "frontier").compress}"
+  let summary := Json.mkObj [("schema", toJson "zeta-batch-summary-v2"), ("method", toJson method),
+    ("batch_theorem", toJson batch.toString), ("rows", toJson rows.size),
+    ("extraction_ms", toJson ((← IO.monoMsNow) - t0)), ("certificates", toJson rows)]
+  IO.FS.writeFile (out / s!"{batch}.summary.json") summary.compress
+  IO.println s!"{batch}: {rows.size} rows summarised"
