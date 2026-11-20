@@ -1,0 +1,96 @@
+# Build Salvatore Mercuri and Bhavik Mehta's smmercuri/zeta (the height 10,011 case), then read
+# the proof trees of a few zero certificates out of the compiled batches, plus an elaboration
+# profile of one batch. Run by hand; the reports are uploaded for review, not published.
+name: Zeta certificate trees
+on:
+  push:
+    branches: [claude/zeta-certificate-trees-20261120]
+    paths: ['tools/zeta/**', '.github/workflows/zeta-trees.yml']
+  workflow_dispatch:
+    inputs:
+      zeta_ref:
+        description: smmercuri/zeta commit
+        default: 34037d5a7662e2eb6e970bfb22299c84e45ed5d9
+      rows:
+        description: certificates per method
+        default: "3"
+permissions:
+  contents: read
+jobs:
+  trees:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    steps:
+      - name: Free runner disk
+        run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: self
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: smmercuri/zeta
+          ref: ${{ inputs.zeta_ref || '34037d5a7662e2eb6e970bfb22299c84e45ed5d9' }}
+          path: zeta
+      - name: Install elan
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - name: Restore an earlier build, if saved
+        uses: actions/cache/restore@v4
+        with:
+          path: zeta/.lake
+          key: zeta-lake-${{ inputs.zeta_ref || '34037d5a7662e2eb6e970bfb22299c84e45ed5d9' }}-${{ github.run_id }}
+          restore-keys: zeta-lake-${{ inputs.zeta_ref || '34037d5a7662e2eb6e970bfb22299c84e45ed5d9' }}-
+      - name: Fetch Mathlib's compiled files
+        working-directory: zeta
+        run: lake exe cache get
+      - name: Build the height 10,011 theorem
+        working-directory: zeta
+        run: |
+          set -o pipefail
+          /usr/bin/time -v lake build Zeta.Main 2>&1 | tee "$RUNNER_TEMP/build.log" | { grep -v '^✔' || true; }
+      - name: Save the build
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: zeta/.lake
+          key: zeta-lake-${{ inputs.zeta_ref || '34037d5a7662e2eb6e970bfb22299c84e45ed5d9' }}-${{ github.run_id }}
+      - name: Read certificate trees from the compiled batches
+        working-directory: zeta
+        env:
+          ZETA_TREES_ROWS: ${{ inputs.rows || '3' }}
+          ZETA_TREES_OUT: ${{ runner.temp }}/out/trees
+        run: |
+          set -o pipefail
+          {
+            echo 'import Zeta.Zeros.Certificates.EulerMaclaurin.Batch0001'
+            echo 'import Zeta.Zeros.Certificates.RiemannSiegel.Batch0001'
+            grep -v '^import ' ../self/tools/zeta/TreeDump.lean
+            cat ../self/tools/zeta/ExtractZeta.lean
+          } > ExtractTrees.lean
+          cp ExtractTrees.lean "$RUNNER_TEMP/"
+          lake env lean ExtractTrees.lean 2>&1 | tee "$RUNNER_TEMP/extract.log"
+      - name: Profile the elaboration of the first batch of each method
+        if: always()
+        working-directory: zeta
+        run: |
+          mkdir -p "$RUNNER_TEMP/out/profile"
+          for f in Zeta/Zeros/Certificates/EulerMaclaurin/Batch0001.lean Zeta/Zeros/Certificates/RiemannSiegel/Batch0001.lean; do
+            n=$(echo "$f" | tr '/' '_' | sed 's/.lean$//')
+            ( time lake env lean -Dtrace.profiler=true -Dtrace.BSN.phases=true \
+                -Dtrace.profiler.output="$RUNNER_TEMP/out/profile/$n.firefox.json" "$f" ) \
+              > "$RUNNER_TEMP/out/profile/$n.trace.txt" 2>&1 || echo "profile $f failed" >> "$RUNNER_TEMP/out/profile/failed"
+          done
+          ls -la "$RUNNER_TEMP/out/profile"
+      - name: Collect
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/out"
+          cp "$RUNNER_TEMP"/build.log "$RUNNER_TEMP"/extract.log "$RUNNER_TEMP"/ExtractTrees.lean "$RUNNER_TEMP/out/" 2>/dev/null || true
+          (cd zeta && git rev-parse HEAD > "$RUNNER_TEMP/out/zeta_commit.txt" && cat lean-toolchain >> "$RUNNER_TEMP/out/zeta_commit.txt")
+          find zeta/.lake/build -path '*Certificates/EulerMaclaurin/Batch0001*' -o -path '*Certificates/RiemannSiegel/Batch0001*' | xargs ls -la > "$RUNNER_TEMP/out/batch0001_build_files.txt" 2>&1 || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zeta-certificate-trees
+          path: ${{ runner.temp }}/out
