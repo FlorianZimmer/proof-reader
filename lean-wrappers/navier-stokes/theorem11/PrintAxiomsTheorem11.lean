@@ -2,7 +2,8 @@
 Axiom report for the space-side Theorem 1.1 wrapper and the helper modules that
 compile on their own. The torus modules have their own report in
 `PrintAxiomsTheorem11Torus.lean`, so a torus failure cannot hide these lines.
-The full physical endpoints are deliberately absent: they are not proved here.
+The global endpoints `Theorem11.theorem11Space` and `Theorem11.theorem11SpaceBlowup`
+are printed last; the torus endpoint is an open target and is not declared.
 -/
 import Theorem11Solution
 import Theorem11TorusMildExport
@@ -34,3 +35,9 @@ import Theorem11NormAssembly
 #print axioms Theorem11.comparisonField_one_zero
 #print axioms Theorem11.rescaleAtOne_zero
 #print axioms Theorem11.gradientNorm_eq_norm_of_sq_eq
+#print axioms Theorem11Energy.energy_le_initial
+#print axioms Theorem11Glue.pressure_agree
+#print axioms Theorem11.glued_solution
+#print axioms Theorem11Core.no_continuous_continuation
+#print axioms Theorem11.theorem11SpaceBlowup
+#print axioms Theorem11.theorem11Space

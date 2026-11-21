@@ -1,9 +1,8 @@
 {
-  "challenge_module": "Theorem11Challenge",
+  "challenge_module": "Theorem11Endpoints",
   "solution_module": "Theorem11Solution",
   "theorem_names": [
-    "Theorem11.theorem11Space",
-    "Theorem11.theorem11Torus"
+    "Theorem11.theorem11Space"
   ],
   "permitted_axioms": [
     "propext",

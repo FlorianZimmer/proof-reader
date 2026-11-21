@@ -1,0 +1,28 @@
+{
+  "challenge_module": "Theorem11Endpoints",
+  "solution_module": "Theorem11Solution",
+  "theorem_names": [
+    "Theorem11.theorem11SpaceBlowup"
+  ],
+  "permitted_axioms": [
+    "propext",
+    "Classical.choice",
+    "Quot.sound"
+  ],
+  "external_kernels": {
+    "Lean paranoid": [
+      "leanchecker-paranoid",
+      "--silent",
+      "--from-export"
+    ],
+    "nanoda": [
+      "nanoda_bin"
+    ],
+    "con-leche": [
+      "con-leche"
+    ],
+    "con-ron": [
+      "con-ron"
+    ]
+  }
+}

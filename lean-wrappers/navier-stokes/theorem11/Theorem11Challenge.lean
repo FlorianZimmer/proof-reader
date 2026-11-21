@@ -270,4 +270,56 @@ def Theorem11SpaceSlabs : Prop :=
     (R : Space ≃ₗᵢ[ℝ] Space) (A : ℝ),
     IsLibraryProfile W q P R A → ∀ ε : ℝ, 0 < ε → SpaceSlabsConclusion W ε
 
+/-- Smoothness up to and including time T, with the PDE at interior times.
+This is the class of a smooth continuation through the blow-up time. -/
+structure IsSmoothSolutionThrough (ν T : ℝ) (u₀ : VectorField)
+    (u : Velocity) (p : Pressure) : Prop where
+  smooth_velocity : ContDiffOn ℝ ∞ (fun z : ℝ × Space => u z.1 z.2)
+    (Icc 0 T ×ˢ (univ : Set Space))
+  smooth_pressure : ContDiffOn ℝ ∞ (fun z : ℝ × Space => p z.1 z.2)
+    (Icc 0 T ×ˢ (univ : Set Space))
+  initial : ∀ x, u 0 x = u₀ x
+  momentum : ∀ t ∈ Ioo 0 T, ∀ x,
+    deriv (fun τ => u τ x) t + advectionAt (u t) x =
+      ν • laplacianAt (u t) x - pressureGradientAt (p t) x
+  incompressible : ∀ t ∈ Icc 0 T, ∀ x, divergenceAt (u t) x = 0
+
+/-- Uniform finite energy on the closed interval [0,T]. -/
+def UniformFiniteEnergyThrough (T : ℝ) (u : Velocity) : Prop :=
+  ∃ E : ℝ, 0 ≤ E ∧ ∀ t ∈ Icc 0 T,
+    ∫⁻ x, ENNReal.ofReal (‖u t x‖ ^ 2) ≤ ENNReal.ofReal E
+
+/-- The conclusion of `SpaceConclusion`, together with the two facts that make
+the solution the one that blows up: every smooth finite-energy solution with
+the same datum on an interval [0,T), T ≤ 1, is this solution there; and no
+smooth finite-energy solution with this datum exists on the closed interval
+[0,1]. -/
+def SpaceBlowupConclusion (W : Velocity) (ε : ℝ) : Prop :=
+  ∃ (u₀ : VectorField) (u : Velocity) (p : Pressure) (c C κ : ℝ),
+    ContDiff ℝ ∞ u₀ ∧ HasCompactSupport u₀ ∧
+    (∀ x, divergenceAt u₀ x = 0) ∧
+    FiniteGradient (u₀ - W 0) ∧ gradientNorm (u₀ - W 0) < ε ∧
+    IsSmoothSolutionBefore 1 1 u₀ u p ∧ UniformFiniteEnergyBefore 1 u ∧
+    0 < c ∧ c ≤ C ∧ 0 < κ ∧ κ < (1 / 4 : ℝ) ∧
+    (∀ t ∈ Ico (0 : ℝ) 1,
+      FiniteGradient (u t) ∧
+      c * (1 - t) ^ (-(1 / 4 : ℝ)) ≤ gradientNorm (u t) ∧
+      gradientNorm (u t) ≤ C * (1 - t) ^ (-(1 / 4 : ℝ))) ∧
+    (∀ t ∈ Ico (0 : ℝ) 1,
+      FiniteGradient (rescaleAtOne u t - W (-Real.log (1 - t))) ∧
+      gradientNorm (rescaleAtOne u t - W (-Real.log (1 - t))) ≤
+        C * (1 - t) ^ κ) ∧
+    (∀ T : ℝ, T ≤ 1 → ∀ (v : Velocity) (q : Pressure),
+      IsSmoothSolutionBefore 1 T u₀ v q → UniformFiniteEnergyBefore T v →
+      ∀ t ∈ Ico (0 : ℝ) T, v t = u t) ∧
+    ¬ ∃ (v : Velocity) (q : Pressure),
+      IsSmoothSolutionThrough 1 1 u₀ v q ∧ UniformFiniteEnergyThrough 1 v
+
+/-- Theorem 1.1 on R³ for a profile of the library's class, with uniqueness and
+the impossibility of a smooth finite-energy continuation to time one. -/
+def Theorem11SpaceBlowup : Prop :=
+  ∀ (W : Velocity) (q : Pressure) (P : ℝ)
+    (R : Space ≃ₗᵢ[ℝ] Space) (A : ℝ),
+    IsLibraryProfile W q P R A → ∀ ε : ℝ, 0 < ε → SpaceBlowupConclusion W ε
+
 end Theorem11
