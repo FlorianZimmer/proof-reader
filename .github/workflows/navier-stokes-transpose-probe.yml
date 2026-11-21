@@ -1,0 +1,111 @@
+# Diagnostic for the Comparator mismatch on Breakdown.AdjointDefect.transposeApply, reported when
+# the standalone readable file CellLayerChallenge.lean is judged against the library. Each probe
+# runs in its own Lean process: one imports the readable file, the other the library's
+# Breakdown.CertCell.StatementDefs. They print the elaborated constants with all implicit
+# arguments and the full constant data, and a script compares the two. No author file is edited.
+name: Probe the transposeApply mismatch between the readable cell file and the library
+'on':
+  workflow_dispatch: {}
+  push:
+    branches:
+    - claude/navier-stokes-*
+    paths:
+    - .github/workflows/navier-stokes-transpose-probe.yml
+    - lean-wrappers/navier-stokes/transpose-probe/**
+permissions:
+  contents: read
+concurrency:
+  group: navier-stokes-transpose-probe
+  cancel-in-progress: false
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    defaults:
+      run:
+        shell: bash
+    env:
+      NS_COMMIT: ad53419de079eb8f95f60313473374624a348546
+      NS: /home/runner/ns
+      OUT: /home/runner/out
+      PROBE: lean-wrappers/navier-stokes/transpose-probe
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+    - name: Free disk space
+      run: |
+        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+        df -h / | tail -1
+    - name: Install elan
+      run: |
+        curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+        echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+    - name: Fetch the authors' repository at the pinned commit
+      run: |
+        mkdir -p "$OUT"
+        git init -q "$NS" && cd "$NS"
+        git remote add origin https://github.com/tristanbuckmaster/navier-stokes.git
+        git fetch -q --depth 1 origin "$NS_COMMIT" && git checkout -q FETCH_HEAD
+        git rev-parse HEAD | tee "$OUT/ns-commit.txt"
+        cd lean
+        sed -n '3521,3522p' CellLayerChallenge.lean | tee "$OUT/source-readable.txt"
+        sed -n '2717,2718p' Breakdown/CertCell/StatementDefs.lean | tee "$OUT/source-library.txt"
+        cmp "$OUT/source-readable.txt" "$OUT/source-library.txt" && echo "source lines byte-identical"
+    - name: Restore the package's compiled files from the Comparator build
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ env.NS }}/lean/.lake/build
+        key: ns-probe-${{ env.NS_COMMIT }}-${{ github.run_id }}
+        restore-keys: |
+          ns-build-v3-${{ env.NS_COMMIT }}-
+    - name: Fetch Mathlib's compiled files (official cache)
+      working-directory: ${{ env.NS }}/lean
+      run: lake exe cache get
+    - name: Add the probe support modules
+      working-directory: ${{ env.NS }}/lean
+      run: |
+        for f in DumpSupport ClosureDump; do
+          test ! -e "$f.lean"
+          cp "$GITHUB_WORKSPACE/$PROBE/$f.lean" .
+          printf '\n[[lean_lib]]\nname = "%s"\n' "$f" >> lakefile.toml
+        done
+        for f in ProbeReadable ProbeLibrary ClosureReadable ClosureLibrary; do
+          test ! -e "$f.lean"; cp "$GITHUB_WORKSPACE/$PROBE/$f.lean" .
+        done
+        cp "$GITHUB_WORKSPACE/$PROBE/transpose_names.txt" .
+        sha256sum "$GITHUB_WORKSPACE/$PROBE"/* > "$OUT/probe-sources.sha256"
+    - name: Build the two statement environments and the support modules
+      working-directory: ${{ env.NS }}/lean
+      run: |
+        start=$(date +%s)
+        if timeout --kill-after=60s 150m lake build CellLayerChallenge Breakdown.CertCell.StatementDefs DumpSupport ClosureDump > "$OUT/build.log" 2>&1; then c=0; else c=$?; fi
+        echo "$c" > "$OUT/build.exit"
+        echo "build exit $c after $(( $(date +%s) - start ))s"
+        grep -E '^error' "$OUT/build.log" | head -10 || true
+        test "$c" = 0
+    - name: Run each probe in its own process
+      working-directory: ${{ env.NS }}/lean
+      run: |
+        for m in ProbeReadable ProbeLibrary ClosureReadable ClosureLibrary; do
+          if timeout --kill-after=60s 30m lake env lean "$m.lean" > "$OUT/$m.txt" 2>&1; then c=0; else c=$?; fi
+          echo "$c" > "$OUT/$m.exit"
+          echo "$m exit $c, $(wc -c < "$OUT/$m.txt") bytes"
+          grep -nE 'error' "$OUT/$m.txt" | head -5 || true
+        done
+    - name: Compare the two environments
+      if: always()
+      run: |
+        python3 "$PROBE/compare_probe_dumps.py" "$OUT/ProbeReadable.txt" "$OUT/ProbeLibrary.txt" > "$OUT/probe-diff.json" || echo "probe comparison exit $?"
+        python3 "$PROBE/compare_closure.py" "$OUT/ClosureReadable.txt" "$OUT/ClosureLibrary.txt" > "$OUT/closure-diff.json" || echo "closure comparison exit $?"
+        head -c 6000 "$OUT/closure-diff.json"
+        echo
+        grep -n "rfl\|error\|synth\|inst" "$OUT/ProbeReadable.txt" | head -20 || true
+        grep -n "rfl\|error\|synth\|inst" "$OUT/ProbeLibrary.txt" | head -20 || true
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: navier-stokes-transpose-probe
+        path: ${{ env.OUT }}
+        retention-days: 14
+        if-no-files-found: error
