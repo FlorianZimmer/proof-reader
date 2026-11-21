@@ -4,7 +4,7 @@
 # lemmas and restates the originals as corollaries with unchanged types. The package's compiled
 # files come from the Comparator workflow's cache; the patched files and their dependents are
 # rebuilt. Artifacts hold logs and exit codes only.
-name: Compile the Navier–Stokes Theorem 7.1 wrapper
+name: Compile the Navier–Stokes Theorem 7.1 wrapper and judge it with Comparator
 'on':
   workflow_dispatch: {}
   push:
@@ -30,6 +30,7 @@ jobs:
       NS: /home/runner/ns
       OUT: /home/runner/out
       WRAP: lean-wrappers/navier-stokes-theorem71
+      EXPORT_COMMIT: 15f6055e299ad5b89345e533cc2192f4cc00f659
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
@@ -102,6 +103,79 @@ jobs:
         (out / "theorem71-build.json").write_text(json.dumps(report, indent=2) + "\n")
         print(json.dumps(report, indent=2))
         PY
+    - name: Build lean4export with Lean v4.33.1
+      if: always()
+      run: |
+        git init -q "$RUNNER_TEMP/export" && cd "$RUNNER_TEMP/export"
+        git remote add origin https://github.com/leanprover/lean4export.git
+        git fetch -q --depth 1 origin "$EXPORT_COMMIT" && git checkout -q FETCH_HEAD
+        echo 'leanprover/lean4:v4.33.1' > lean-toolchain
+        lake build && ls .lake/build/bin
+    - name: Write the exports of the challenge, the solution and the control
+      if: always()
+      timeout-minutes: 90
+      working-directory: ${{ env.NS }}/lean
+      run: |
+        X="$RUNNER_TEMP/export/.lake/build/bin/lean4export"
+        PRELUDE="propext Quot.sound Classical.choice Nat.add Nat.sub Nat.mul Nat.pow Nat.gcd Nat.div Nat.mod Nat.beq Nat.ble Nat.land Nat.lor Nat.xor Nat.shiftLeft Nat.shiftRight String.ofList Char.ofNat List eagerReduce Nat String String.mk Char optParam autoParam semiOutParam outParam"
+        ROOTS="Breakdown.theorem71_extended Breakdown.theorem71_cell"
+        mkdir -p "$RUNNER_TEMP/x"
+        ex() {
+          echo "== $1"
+          if [ "$(cat "$OUT/build-$1.exit")" != 0 ]; then echo "$1 did not build; no export"; return 0; fi
+          lake env "$X" "$1" -- Quot Quot.mk Quot.lift Quot.ind $2 $PRELUDE > "$RUNNER_TEMP/x/$3.export" 2> "$OUT/export-$3.log" || echo "export of $1 failed: $?" | tee -a "$OUT/export-$3.log"
+        }
+        ex Theorem71Challenge "$ROOTS" challenge
+        ex Theorem71Solution "$ROOTS" solution
+        ex Theorem71Control "Breakdown.theorem71_extended" control
+        ls -l "$RUNNER_TEMP/x"; (cd "$RUNNER_TEMP/x" && sha256sum *.export) | tee "$OUT/exports.sha256"
+    - name: Install the sandbox Comparator uses, and Lean v4.36.0
+      if: always()
+      run: |
+        sudo apt-get update -qq && sudo apt-get install -y -qq bubblewrap
+        sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+        mkdir -p "$RUNNER_TEMP/judge" && cd "$RUNNER_TEMP/judge"
+        echo 'leanprover/lean4:v4.36.0' > lean-toolchain
+        lake --version
+        bin="$(dirname "$(elan which lake)")"
+        export PATH="$bin:$PATH"
+        echo "$bin" >> "$GITHUB_PATH"
+        for k in leanchecker-paranoid nanoda_bin con-leche con-ron; do command -v "$k" || { echo "missing $k"; exit 1; }; done | tee "$OUT/kernels.txt"
+    - name: Comparator on the Theorem 7.1 challenge and on the control
+      if: always()
+      timeout-minutes: 120
+      working-directory: ${{ runner.temp }}/judge
+      run: |
+        cp "$GITHUB_WORKSPACE/$WRAP/wrapper/comparator-theorem71.json" positive.json
+        cp "$GITHUB_WORKSPACE/$WRAP/wrapper/comparator-theorem71-control.json" control.json
+        cp positive.json control.json "$OUT/"
+        lake --version > "$OUT/judge-lean.txt"; bwrap --version >> "$OUT/judge-lean.txt"
+        run() {
+          echo "== $1 (challenge export $2)"; local start=$(date +%s)
+          if [ ! -s "$RUNNER_TEMP/x/$2.export" ] || [ ! -s "$RUNNER_TEMP/x/solution.export" ]; then echo "missing export" > "$OUT/$1.log"; echo 2 > "$OUT/$1.exit"; return 0; fi
+          if timeout --kill-after=60s 60m lake comparator --config "$1.json" --challenge-from-export "$RUNNER_TEMP/x/$2.export" --solution-from-export "$RUNNER_TEMP/x/solution.export" > "$OUT/$1.log" 2>&1; then echo 0 > "$OUT/$1.exit"; else echo $? > "$OUT/$1.exit"; fi
+          tail -25 "$OUT/$1.log"; echo "exit $(cat "$OUT/$1.exit") after $(( $(date +%s) - start ))s"
+        }
+        run positive challenge
+        run control control
+        python3 - <<'PYJUDGE'
+        import json, os
+        from pathlib import Path
+        out = Path(os.environ["OUT"])
+        codes = {n: int((out / f"{n}.exit").read_text()) for n in ["positive", "control"]}
+        control_log = (out / "control.log").read_text(errors="replace")
+        expected = "Challenge and solution theorem statement do not match: 'Breakdown.theorem71_extended'"
+        control_ok = codes["control"] == 1 and expected in control_log
+        accepted = codes["positive"] == 0 and control_ok
+        report = {"status": "accepted" if accepted else "no_verified_pass",
+                  "authors_commit": os.environ["NS_COMMIT"], "exit_codes": codes,
+                  "control_rejected_for_expected_statement_mismatch": control_ok,
+                  "theorem_names": json.loads((out / "positive.json").read_text())["theorem_names"]}
+        (out / "theorem71-comparator.json").write_text(json.dumps(report, indent=2) + "\n")
+        print(json.dumps(report, indent=2))
+        if not accepted:
+            raise SystemExit("Comparator did not accept the Theorem 7.1 wrapper with the expected control rejection")
+        PYJUDGE
     - uses: actions/upload-artifact@v4
       if: always()
       with:
