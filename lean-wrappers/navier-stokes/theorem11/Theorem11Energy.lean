@@ -27,6 +27,10 @@ def zeroVel : ℝ → Space → Space := fun _ _ => 0
 /-- The zero pressure. -/
 def zeroPres : ℝ → Space → ℝ := fun _ _ => 0
 
+theorem zeroVel_t (t : ℝ) : zeroVel t = fun _ => (0 : Space) := rfl
+
+theorem zeroPres_t (t : ℝ) : zeroPres t = fun _ => (0 : ℝ) := rfl
+
 theorem zero_isSolutionOn (T : ℝ) : IsSolutionOn T zeroVel zeroPres := by
   refine ⟨?_, ?_, ?_, ?_⟩
   · show ContDiffOn ℝ ∞ (fun _ : ℝ × Space => (0 : Space)) _
@@ -34,9 +38,9 @@ theorem zero_isSolutionOn (T : ℝ) : IsSolutionOn T zeroVel zeroPres := by
   · show ContDiffOn ℝ ∞ (fun _ : ℝ × Space => (0 : ℝ)) _
     exact contDiffOn_const
   · intro t _ x
-    simp [zeroVel, zeroPres, advectionAt, sumSecondPartialsAt, gradientAt]
+    simp [zeroVel_t, zeroPres_t, advectionAt, sumSecondPartialsAt, gradientAt]
   · intro t _ x
-    simp [zeroVel, divergenceAt]
+    simp [zeroVel_t, divergenceAt]
 
 /-- Monotonicity of the authors' cutoff in its radius (their proof, which is
 private in `SmoothUniqueness`). -/
@@ -53,6 +57,64 @@ theorem cutoffPow_nonneg' (r : ℝ) (x : Space) : 0 ≤ cutoffPow r x :=
 theorem cutoffPow_le_one' (r : ℝ) (x : Space) : cutoffPow r x ≤ 1 :=
   pow_le_one₀ (radialCutoff_nonneg r x) (radialCutoff_le_one r x)
 
+/-- The n-th localized density, with cutoff radius n + 1. -/
+def cutoffSeq (g : Space → ℝ) (n : ℕ) (x : Space) : ℝ≥0∞ :=
+  ENNReal.ofReal (cutoffPow ((n : ℝ) + 1) x * g x)
+
+/-- Monotone convergence in the cutoff radius: if every localized integral of a
+continuous nonnegative density is at most the real part of a finite M, then so
+is the full integral. -/
+theorem lintegral_ofReal_le_of_cutoff {g : Space → ℝ} (hg : Continuous g)
+    (hg0 : ∀ x, 0 ≤ g x) {M : ℝ≥0∞} (hM : M ≠ ⊤)
+    (h : ∀ R : ℝ, 1 ≤ R → ∫ x, cutoffPow R x * g x ≤ M.toReal) :
+    ∫⁻ x, ENNReal.ofReal (g x) ≤ M := by
+  have hmeas : ∀ n : ℕ, Measurable (cutoffSeq g n) := fun n =>
+    (((Internal.CutoffEnergy.contDiff_cutoffPow
+      (by positivity : (0 : ℝ) < (n : ℝ) + 1)).continuous.mul hg).measurable).ennreal_ofReal
+  have hmono : Monotone (cutoffSeq g) := by
+    intro m n hmn x
+    have hmn' : (m : ℝ) + 1 ≤ (n : ℝ) + 1 := by
+      have := (Nat.cast_le (α := ℝ)).2 hmn
+      linarith
+    have hm0 : (0 : ℝ) < (m : ℝ) + 1 := by positivity
+    show ENNReal.ofReal (cutoffPow ((m : ℝ) + 1) x * g x) ≤
+      ENNReal.ofReal (cutoffPow ((n : ℝ) + 1) x * g x)
+    exact ENNReal.ofReal_le_ofReal
+      (mul_le_mul_of_nonneg_right (cutoffPow_mono' hm0 hmn' x) (hg0 x))
+  have hpt : ∀ x, ENNReal.ofReal (g x) = ⨆ n : ℕ, cutoffSeq g n x := by
+    intro x
+    apply le_antisymm
+    · obtain ⟨N, hN⟩ := exists_nat_ge ‖x‖
+      refine le_iSup_of_le N (le_of_eq ?_)
+      have hpos : (0 : ℝ) < (N : ℝ) + 1 := by positivity
+      have hle : ‖x‖ ≤ (N : ℝ) + 1 := by linarith
+      have h1 : cutoffPow ((N : ℝ) + 1) x = 1 := by
+        simp [cutoffPow, radialCutoff_eq_one hpos hle]
+      show ENNReal.ofReal (g x) = ENNReal.ofReal (cutoffPow ((N : ℝ) + 1) x * g x)
+      rw [h1, one_mul]
+    · refine iSup_le fun n => ?_
+      show ENNReal.ofReal (cutoffPow ((n : ℝ) + 1) x * g x) ≤ ENNReal.ofReal (g x)
+      exact ENNReal.ofReal_le_ofReal
+        (mul_le_of_le_one_left (hg0 x) (cutoffPow_le_one' _ x))
+  have hfin : ∀ n : ℕ, ∫⁻ x, cutoffSeq g n x ≤ M := by
+    intro n
+    have hn0 : (0 : ℝ) < (n : ℝ) + 1 := by positivity
+    have hn1 : (1 : ℝ) ≤ (n : ℝ) + 1 := by
+      have := Nat.cast_nonneg (α := ℝ) n
+      linarith
+    have hint := Internal.CutoffEnergy.integrable_cutoffPow_mul hn0 hg
+    have hrw := ofReal_integral_eq_lintegral_ofReal hint
+      (ae_of_all _ fun x => mul_nonneg (cutoffPow_nonneg' _ x) (hg0 x))
+    calc ∫⁻ x, cutoffSeq g n x
+        = ENNReal.ofReal (∫ x, cutoffPow ((n : ℝ) + 1) x * g x) := hrw.symm
+      _ ≤ ENNReal.ofReal M.toReal := ENNReal.ofReal_le_ofReal (h _ hn1)
+      _ = M := ENNReal.ofReal_toReal hM
+  calc ∫⁻ x, ENNReal.ofReal (g x)
+      = ∫⁻ x, ⨆ n : ℕ, cutoffSeq g n x := lintegral_congr hpt
+    _ = ⨆ n : ℕ, ∫⁻ x, cutoffSeq g n x := lintegral_iSup hmeas hmono
+    _ ≤ M := iSup_le hfin
+
+set_option maxHeartbeats 400000 in
 /-- The energy inequality: a smooth solution on [0,T] with finite energy at
 every time has, at every time, energy at most that of its datum. -/
 theorem energy_le_initial {T : ℝ} {v : ℝ → Space → Space} {q : ℝ → Space → ℝ}
@@ -71,12 +133,13 @@ theorem energy_le_initial {T : ℝ} {v : ℝ → Space → Space} {q : ℝ → S
     ne_top_of_le_ne_top ENNReal.ofReal_ne_top (hAv 0 h0T)
   obtain ⟨A, hA0, hA2⟩ : ∃ A : ℝ, 0 ≤ A ∧ A ^ 2 = max Av 0 :=
     ⟨_, Real.sqrt_nonneg _, Real.sq_sqrt (le_max_right _ _)⟩
+  obtain ⟨B, hB⟩ : ∃ B : ℝ, B = |K * (1 + 0) * (A ^ 2 + A ^ 6)| := ⟨_, rfl⟩
   have hdata : ∀ τ ∈ Ioo 0 T, IsDifferenceData A 0 0 (zeroVel τ) (v τ - zeroVel τ) := by
     intro τ hτ
     have hτ' := Ioo_subset_Icc_self hτ
     rw [hsub τ]
     refine ⟨⟨hv.contDiff_velocity hτ', hv.incompressible τ hτ', hA0, ?_⟩, ?_,
-      hu.incompressible τ hτ', fun x => by simp [zeroVel], fun x => by simp [zeroVel]⟩
+      hu.incompressible τ hτ', fun x => by simp [zeroVel], fun x => by simp [zeroVel_t]⟩
     · rw [hA2]
       exact (hAv τ hτ').trans (ENNReal.ofReal_le_ofReal (le_max_left _ _))
     · show ContDiff ℝ ∞ (fun _ : Space => (0 : Space))
@@ -90,8 +153,7 @@ theorem energy_le_initial {T : ℝ} {v : ℝ → Space → Space} {q : ℝ → S
     simp only [differenceRHS, Pi.sub_apply, add_sub_cancel]
   -- The localized energy at time t exceeds that of the datum by at most O(1/r).
   have hbound : ∀ r : ℝ, 1 ≤ r → ∫ x, cutoffPow r x * ‖v t x‖ ^ 2 ≤
-      (∫⁻ x, ENNReal.ofReal (‖v 0 x‖ ^ 2)).toReal +
-        2 * (|K * (1 + 0) * (A ^ 2 + A ^ 6)| * T) / r := by
+      (∫⁻ x, ENNReal.ofReal (‖v 0 x‖ ^ 2)).toReal + 2 * (B * T) / r := by
     intro r hr
     have hr0 : 0 < r := lt_of_lt_of_le one_pos hr
     obtain ⟨c, hc⟩ : ∃ c : ℝ, c = K * (1 + 0) * (A ^ 2 + A ^ 6) / r := ⟨_, rfl⟩
@@ -122,8 +184,8 @@ theorem energy_le_initial {T : ℝ} {v : ℝ → Space → Space} {q : ℝ → S
         mul_nonneg (cutoffPow_nonneg' r x) (by positivity)) hint0.aestronglyMeasurable]
       exact ENNReal.toReal_mono hM0top (lintegral_mono fun x => ENNReal.ofReal_le_ofReal
         (mul_le_of_le_one_left (by positivity) (cutoffPow_le_one' r x)))
-    have hct : c * t ≤ |K * (1 + 0) * (A ^ 2 + A ^ 6)| * T / r := by
-      rw [hc]
+    have hct : c * t ≤ B * T / r := by
+      rw [hc, hB]
       calc K * (1 + 0) * (A ^ 2 + A ^ 6) / r * t
           = (K * (1 + 0) * (A ^ 2 + A ^ 6) * t) * r⁻¹ := by ring
         _ ≤ (|K * (1 + 0) * (A ^ 2 + A ^ 6)| * T) * r⁻¹ :=
@@ -131,8 +193,7 @@ theorem energy_le_initial {T : ℝ} {v : ℝ → Space → Space} {q : ℝ → S
             (inv_nonneg.2 hr0.le)
         _ = |K * (1 + 0) * (A ^ 2 + A ^ 6)| * T / r := by ring
     unfold cutoffEnergy at hg
-    have h2 : |K * (1 + 0) * (A ^ 2 + A ^ 6)| * T / r * 2 =
-        2 * (|K * (1 + 0) * (A ^ 2 + A ^ 6)| * T) / r := by ring
+    have h2 : B * T / r * 2 = 2 * (B * T) / r := by ring
     linarith
   have hwc : Continuous fun x => ‖v t x‖ ^ 2 := (hv.contDiff_velocity ht).continuous.norm.pow 2
   -- Every fixed localization is bounded by the datum's energy.
@@ -146,54 +207,13 @@ theorem energy_le_initial {T : ℝ} {v : ℝ → Space → Space} {q : ℝ → S
         (Internal.CutoffEnergy.integrable_cutoffPow_mul (lt_of_lt_of_le hR0 hr) hwc)
         (fun x => mul_le_mul_of_nonneg_right (cutoffPow_mono' hR0 hr x) (by positivity))
     have htend : Tendsto (fun r : ℝ => (∫⁻ x, ENNReal.ofReal (‖v 0 x‖ ^ 2)).toReal +
-        2 * (|K * (1 + 0) * (A ^ 2 + A ^ 6)| * T) / r) atTop
+        2 * (B * T) / r) atTop
         (𝓝 ((∫⁻ x, ENNReal.ofReal (‖v 0 x‖ ^ 2)).toReal + 0)) :=
       tendsto_const_nhds.add (tendsto_const_nhds.div_atTop tendsto_id)
     rw [add_zero] at htend
     exact ge_of_tendsto htend ((eventually_ge_atTop R).mono fun r hr =>
       (hmono r hr).trans (hbound r (hR1.trans hr)))
-  -- Monotone convergence in the cutoff radius.
-  have hfin : ∀ n : ℕ, ∫⁻ x, ENNReal.ofReal (cutoffPow ((n : ℝ) + 1) x * ‖v t x‖ ^ 2) ≤
-      ∫⁻ x, ENNReal.ofReal (‖v 0 x‖ ^ 2) := by
-    intro n
-    have hn0 : (0 : ℝ) < (n : ℝ) + 1 := by positivity
-    rw [← ofReal_integral_eq_lintegral_ofReal
-      (Internal.CutoffEnergy.integrable_cutoffPow_mul hn0 hwc)
-      (ae_of_all _ fun x => mul_nonneg (cutoffPow_nonneg' _ x) (by positivity))]
-    calc ENNReal.ofReal (∫ x, cutoffPow ((n : ℝ) + 1) x * ‖v t x‖ ^ 2)
-        ≤ ENNReal.ofReal (∫⁻ x, ENNReal.ofReal (‖v 0 x‖ ^ 2)).toReal :=
-          ENNReal.ofReal_le_ofReal (hJ _ (le_add_of_nonneg_left (Nat.cast_nonneg n)))
-      _ = ∫⁻ x, ENNReal.ofReal (‖v 0 x‖ ^ 2) := ENNReal.ofReal_toReal hM0top
-  have hmeas : ∀ n : ℕ,
-      Measurable fun x => ENNReal.ofReal (cutoffPow ((n : ℝ) + 1) x * ‖v t x‖ ^ 2) :=
-    fun n => (((Internal.CutoffEnergy.contDiff_cutoffPow
-      (by positivity : (0 : ℝ) < (n : ℝ) + 1)).continuous.mul hwc).measurable).ennreal_ofReal
-  have hmono' : Monotone fun (n : ℕ) (x : Space) =>
-      ENNReal.ofReal (cutoffPow ((n : ℝ) + 1) x * ‖v t x‖ ^ 2) := by
-    intro m n hmn x
-    exact ENNReal.ofReal_le_ofReal (mul_le_mul_of_nonneg_right
-      (cutoffPow_mono' (by positivity) (add_le_add_right (Nat.cast_le.2 hmn) 1) x)
-      (by positivity))
-  have hpt : ∀ x, ENNReal.ofReal (‖v t x‖ ^ 2) =
-      ⨆ n : ℕ, ENNReal.ofReal (cutoffPow ((n : ℝ) + 1) x * ‖v t x‖ ^ 2) := by
-    intro x
-    apply le_antisymm
-    · obtain ⟨N, hN⟩ := exists_nat_ge ‖x‖
-      refine le_iSup_of_le N (le_of_eq ?_)
-      have hpos : (0 : ℝ) < (N : ℝ) + 1 := by positivity
-      have hle : ‖x‖ ≤ (N : ℝ) + 1 := by linarith
-      have h1 : cutoffPow ((N : ℝ) + 1) x = 1 := by
-        simp [cutoffPow, radialCutoff_eq_one hpos hle]
-      show ENNReal.ofReal (‖v t x‖ ^ 2) =
-        ENNReal.ofReal (cutoffPow ((N : ℝ) + 1) x * ‖v t x‖ ^ 2)
-      rw [h1, one_mul]
-    · exact iSup_le fun n => ENNReal.ofReal_le_ofReal
-        (mul_le_of_le_one_left (by positivity) (cutoffPow_le_one' _ x))
-  calc ∫⁻ x, ENNReal.ofReal (‖v t x‖ ^ 2)
-      = ∫⁻ x, ⨆ n : ℕ, ENNReal.ofReal (cutoffPow ((n : ℝ) + 1) x * ‖v t x‖ ^ 2) :=
-        lintegral_congr hpt
-    _ = ⨆ n : ℕ, ∫⁻ x, ENNReal.ofReal (cutoffPow ((n : ℝ) + 1) x * ‖v t x‖ ^ 2) :=
-        lintegral_iSup hmeas hmono'
-    _ ≤ ∫⁻ x, ENNReal.ofReal (‖v 0 x‖ ^ 2) := iSup_le hfin
+  exact lintegral_ofReal_le_of_cutoff (g := fun x => ‖v t x‖ ^ 2) hwc
+    (fun x => sq_nonneg _) hM0top hJ
 
 end Theorem11Energy
