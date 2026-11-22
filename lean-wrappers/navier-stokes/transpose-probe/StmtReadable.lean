@@ -1,0 +1,5 @@
+import CellLayerChallenge
+import ClosureDump
+
+-- Diagnostic only. Run in its own process; never import beside StmtLibrary.
+#dump_statement_hashes Breakdown.CellLayerSystem.breakdownOnSpace_of_cell_system_condition Breakdown.CellLayerSystem.breakdownOnTorus_of_cell_system_condition Breakdown.CellLayerSystem.breakdownOnSpaceAndTorus_of_cell_system_condition

@@ -70,7 +70,7 @@ jobs:
           cp "$GITHUB_WORKSPACE/$PROBE/$f.lean" .
           printf '\n[[lean_lib]]\nname = "%s"\n' "$f" >> lakefile.toml
         done
-        for f in ProbeReadable ProbeLibrary ClosureReadable ClosureLibrary; do
+        for f in ProbeReadable ProbeLibrary ClosureReadable ClosureLibrary StmtReadable StmtLibrary; do
           test ! -e "$f.lean"; cp "$GITHUB_WORKSPACE/$PROBE/$f.lean" .
         done
         cp "$GITHUB_WORKSPACE/$PROBE/transpose_names.txt" .
@@ -79,7 +79,7 @@ jobs:
       working-directory: ${{ env.NS }}/lean
       run: |
         start=$(date +%s)
-        if timeout --kill-after=60s 150m lake build CellLayerChallenge Breakdown.CertCell.StatementDefs DumpSupport ClosureDump > "$OUT/build.log" 2>&1; then c=0; else c=$?; fi
+        if timeout --kill-after=60s 150m lake build CellLayerChallenge CellLayerTheorems Breakdown.CertCell.StatementDefs DumpSupport ClosureDump > "$OUT/build.log" 2>&1; then c=0; else c=$?; fi
         echo "$c" > "$OUT/build.exit"
         echo "build exit $c after $(( $(date +%s) - start ))s"
         grep -E '^error' "$OUT/build.log" | head -10 || true
@@ -87,7 +87,7 @@ jobs:
     - name: Run each probe in its own process
       working-directory: ${{ env.NS }}/lean
       run: |
-        for m in ProbeReadable ProbeLibrary ClosureReadable ClosureLibrary; do
+        for m in ProbeReadable ProbeLibrary ClosureReadable ClosureLibrary StmtReadable StmtLibrary; do
           if timeout --kill-after=60s 30m lake env lean "$m.lean" > "$OUT/$m.txt" 2>&1; then c=0; else c=$?; fi
           echo "$c" > "$OUT/$m.exit"
           echo "$m exit $c, $(wc -c < "$OUT/$m.txt") bytes"
@@ -98,6 +98,9 @@ jobs:
       run: |
         python3 "$PROBE/compare_probe_dumps.py" "$OUT/ProbeReadable.txt" "$OUT/ProbeLibrary.txt" > "$OUT/probe-diff.json" || echo "probe comparison exit $?"
         python3 "$PROBE/compare_closure.py" "$OUT/ClosureReadable.txt" "$OUT/ClosureLibrary.txt" > "$OUT/closure-diff.json" || echo "closure comparison exit $?"
+        python3 "$PROBE/compare_stmt.py" "$OUT/StmtReadable.txt" "$OUT/StmtLibrary.txt" > "$OUT/stmt-diff.json" || echo "statement comparison exit $?"
+        head -c 6000 "$OUT/stmt-diff.json"
+        echo
         head -c 6000 "$OUT/closure-diff.json"
         echo
         grep -n "rfl\|error\|synth\|inst" "$OUT/ProbeReadable.txt" | head -20 || true
