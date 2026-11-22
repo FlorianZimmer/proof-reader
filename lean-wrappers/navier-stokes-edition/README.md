@@ -1,18 +1,19 @@
 # Lean statements for the adapted Navier–Stokes edition
 
-**47 numbered results: 28 supplied reductions and 19 named open targets.** Start with `READ_FIRST.html` for the reader’s guide, or `RETURN.md` for the mathematical findings. `statements.json` is the machine-readable index.
-
-The main addition is a checked conversion of the whole-space error estimate into the physical variables of (1.6), including square-integrability. The new whole-space entrance statement keeps the original solution, constants, initial approximation, uniqueness and failure of continuation. The Section 7 implementation retains the certificate-selected parameter and profile in added modules, without patching the authors’ Lean files.
+**The 47 numbered results of Alpöge and Buckmaster's paper, each mapped to one Lean declaration: 28 proved, in the stated formal form, and 19 stated as open propositions.** The modules are added to the authors' package at commit `ad53419` without editing any of their Lean files. `statements.json` is the machine-readable index; the table below gives every row with its difference from the printed statement.
 
 ## Verification status
 
-The independent physical statement and scaling bridge **compiled with Lean 4.33.1**, and all eleven printed axiom reports use only `propext`, `Quot.sound` and `Classical.choice`. The complete layer’s dependency rebuild **has not been completed locally**; no fresh full-layer or five-kernel Comparator acceptance is claimed. See `checks/validation.json` and the logs. Historical success of the supplied wrappers is evidence about those versions, not an acceptance of these new files.
+Workflow `.github/workflows/navier-stokes-edition.yml`, on public Actions:
 
-Accordingly, this index conservatively uses `reduced` for every numbered result with a supplied theorem implementation. It does not label an unelaborated numbered result `proved`. `open` means an actual proposition definition in `lean/OpenTargets.lean`, with no proof attached. The complete mathematical proof implementations for Lemmas 3.2, 3.3 and 3.5 are supplied and explained in `research/sections_2_to_6.md`; their current build status is still separate.
+- Every module compiles against the authors' package at `ad53419` with Lean 4.33.1. The installer checked all 2,282 pinned files of the authors' package; the only change to it is an appended, delimited Lake section.
+- Axioms: the 28 proved numbered results and five supporting statements (33 declarations, listed in `lean/EditionAxioms.lean`) depend only on `propext`, `Classical.choice` and `Quot.sound`.
+- Comparator (exports written by lean4export under Lean 4.33.1, judged under Lean 4.36.0) accepts `NavierStokes.theorem_1_1_space` and `NavierStokes.conditional_main` against the fixed statements in `comparison/EditionChallenge.lean.in`. Lean's paranoid kernel, con-leche, con-ron (77,722 declarations), nanoda and Lean's default kernel all accept the solution.
+- The control `comparison/WeakenedMain.lean`, which gives the same names weaker conclusions (local solutions only; the whole-space half of the main conclusion only), is rejected for a statement mismatch, both together and for each name separately.
 
-A reduced row refers to its displayed formal statement. Several rows deliberately retain the narrower or reformulated conclusion identified by the settled comparisons; they do not claim the original printed statement unchanged. The differences column is part of the result, not an optional qualification.
+A row marked "reduced" proves its displayed formal statement, including any narrowing or reformulation recorded in the last column; it does not claim the printed statement unchanged. "Open" means a proposition in `lean/OpenTargets.lean` with no proof attached; it does not mean the assertion is false.
 
-The packet contains the original numbered statements and settled comparisons, while N1–N6 are preparing the revised edition separately. Agreement with their unseen final wording is not asserted. The differences below are the points that the final wording must retain.
+The first build found compile errors in `SectionAnalysisDefinitions.lean` (λ used as a variable name, two docstrings placed before `open … in`, two sums whose scope ended early, an `ENNReal` fact), `AppendixB.lean` (a nonnegativity proof) and `SectionSeven.lean` (an almost-everywhere equality and a heartbeat limit). They were fixed here; no statement changed.
 
 ## Read the two main statements
 
@@ -21,7 +22,7 @@ The packet contains the original numbered statements and settled comparisons, wh
 | `NavierStokes.theorem_1_1_space` | A specified nonzero smooth recurrent profile, with positive period, orthogonal isometry, velocity decay through order two and the separately displayed pressure-gradient bound | One smooth, uniformly finite-energy solution on `[0,1)`, with the two-sided gradient rate, physical error (1.6), initial approximation, uniqueness and no finite-energy smooth continuation through 1 |
 | `NavierStokes.conditional_main` | Either such a profile with pressure decay, **or** data satisfying every formal extended-certificate condition | The authors’ whole-space and torus nonexistence conclusions, for every positive viscosity |
 
-The second conclusion does not itself state a quantitative torus trajectory. The whole-space excluded class has uniformly bounded energy. The torus excluded class has periodic velocity and allows every smooth pressure. The datum may depend on viscosity. The certificate assumption is a mathematical condition on data; no numerical certificate is supplied by this ZIP.
+The second conclusion does not itself state a quantitative torus trajectory. The whole-space excluded class has uniformly bounded energy. The torus excluded class has periodic velocity and allows every smooth pressure. The datum may depend on viscosity. The certificate assumption is a mathematical condition on data; no numerical certificate is included.
 
 ## Install and build
 
@@ -42,36 +43,27 @@ The new comparison configurations are installed under `edition-comparison/`. `Ed
 For the existing cross-version Comparator setup, export with the Lean 4.33.1-compatible `lean4export` and judge with the trusted checker setup already used by proof-reader. Alternatively, if using the matching standalone Comparator executable:
 
 ```bash
-python3 /absolute/path/to/return/scripts/run_comparator.py   /absolute/path/to/navier-stokes/lean   --comparator /absolute/path/to/comparator
+python3 /absolute/path/to/navier-stokes-edition/scripts/run_comparator.py   /absolute/path/to/navier-stokes/lean   --comparator /absolute/path/to/comparator
 ```
 
-Both main declarations are compared. Four named external kernels are configured in addition to Lean’s default kernel. The negative controls keep the **same challenge** and supply weaker conclusions with supplied proof implementations. Each control must fail for a statement mismatch; compilation failure or a missing executable is a failed test, not an accepted negative control.
+Both main declarations are compared. Four named external kernels are configured in addition to Lean’s default kernel. The negative controls keep the **same challenge** and supply weaker conclusions with proofs. Each control must fail for a statement mismatch; compilation failure or a missing executable is a failed test, not an accepted negative control.
 
 To check axiom reports:
 
 ```bash
 lake env lean EditionAxioms.lean > edition-comparison/axioms.log
-python3 /absolute/path/to/return/scripts/check_axioms.py edition-comparison/axioms.log
+python3 /absolute/path/to/navier-stokes-edition/scripts/check_axioms.py edition-comparison/axioms.log
 ```
 
 The axiom checker requires an actual report for every expected declaration; an empty or partial log fails.
-
-## Source checks
-
-```bash
-python3 scripts/validate_return.py . --packet /absolute/path/to/original-packet
-python3 /absolute/path/to/original-packet/tools/check_return.py .   --packet /absolute/path/to/original-packet
-```
-
-Both are source checks. Neither substitutes for Lean elaboration, the kernel, or Comparator. The original checker and its output are included. The extra validator understands nested comments and actual namespaces, checks all 47 labels, verifies cited authors’ names, and checks the separation of comparison modules from the solution.
 
 ## Numbered map
 
 Every row has one primary declaration. Supporting ingredients and supplementary open bridges are described in the notes and in `statements.json`.
 
-| Numbered result | Primary Lean declaration | Status | Authors’ declarations used | Difference from the supplied edition statement |
+| Numbered result | Primary Lean declaration | Status | Authors’ declarations used | Difference from the printed statement |
 |---|---|---|---|---|
-| Theorem 1.1 | `NavierStokes.theorem_1_1_space` | reduced | `Breakdown.transferHolds_of_dichotomy`<br>`Breakdown.dichotomyHolds`<br>`Breakdown.profileOrbit_holds`<br>`Breakdown.mildRegular_realization`<br>`Breakdown.eq_of_isSolutionOn` | Whole-space conclusion (1.6) is retained in physical variables, with arbitrary initial approximation, uniqueness and no finite-energy smooth continuation. The formal hypotheses explicitly add second-derivative and pressure-gradient decay. The quantitative torus part (1.7) and deduction of the extra decay from the printed profile assumptions remain open. Revised N1–N6 edition wording was not supplied. |
+| Theorem 1.1 | `NavierStokes.theorem_1_1_space` | reduced | `Breakdown.transferHolds_of_dichotomy`<br>`Breakdown.dichotomyHolds`<br>`Breakdown.profileOrbit_holds`<br>`Breakdown.mildRegular_realization`<br>`Breakdown.eq_of_isSolutionOn` | Whole-space conclusion (1.6) is retained in physical variables, with arbitrary initial approximation, uniqueness and no finite-energy smooth continuation. The formal hypotheses explicitly add second-derivative and pressure-gradient decay. The quantitative torus part (1.7) and deduction of the extra decay from the printed profile assumptions remain open. |
 | Proposition 2.1 | `NavierStokes.proposition_2_1_target` | open | `Breakdown.transferHolds_of_dichotomy`<br>`Breakdown.dichotomyHolds` | The target preserves the printed statement. The available transfer theorem chooses a close datum instead of correcting every nearby prescribed datum in one fixed finite-dimensional space. |
 | Proposition 2.2 | `NavierStokes.proposition_2_2_target` | open | `Breakdown.Periodic.TorusBlowup`<br>`Breakdown.Periodic.torusBlowup_of_parts` | The target uses a mean-zero unit-torus Fourier realization and retains T≤1, both rates and the local physical error. The existing TorusBlowup assertion only retains unboundedness. |
 | Lemma 2.3 | `NavierStokes.lemma_2_3_target` | open | `Breakdown.mildRegular_realization`<br>`Breakdown.MildRegular` | The target includes both domains, one representative on the whole half-open interval, and energy nonincrease. The authors’ linked result is on each closed whole-space interval. |
@@ -124,10 +116,9 @@ Every row has one primary declaration. Supporting ingredients and supplementary 
 - `lean/EditionStatements.lean` is the proof-layer entry point; `lean/OpenTargets.lean` holds every open numbered proposition.
 - `lean/MainTheorems.lean`, `lean/PhysicalStatement.lean` and `lean/SpatialScaling.lean` give the main entrance statements and the physical error conversion.
 - `lean/SectionsTwoSix.lean`, `lean/SectionSeven.lean` and `lean/AppendixB.lean` contain the numbered implementations; their additional definition modules state the open mathematics concretely.
-- `support/theorem11/` reuses the supplied whole-space wrapper proof. Its old status comments are historical; current verification is recorded under `checks/`.
+- `support/theorem11/` is the whole-space Theorem 1.1 wrapper from `lean-wrappers/navier-stokes/theorem11/`, copied so that this layer builds on its own.
 - `support/theorem71/` contains the added witness-retaining modules and the downstream wrapper. `provenance.json` records the three formerly patched authors’ files, all unchanged here.
-- `research/` contains the detailed mathematical differences and public-source checks.
 - `comparison/` contains the fixed challenge template, the weaker solution and individual negative-control configurations.
-- `upstream-pins.json`, `MANIFEST.json` and `checks/` identify the input source, the returned bytes and the checks actually performed.
+- `upstream-pins.json` pins the bytes of every file of the authors' package that the installer checks.
 
-Credit: adapted statements and additional bridge proofs prepared by Will Cook with AI assistance, using the mathematics and Lean proofs of Levent Alpöge and Tristan Buckmaster and the supplied proof-reader wrappers. The authors have not reviewed these changes. See `CREDIT.md`.
+Credit: adapted statements and additional bridge proofs prepared by Will Cook with AI assistance, using the mathematics and Lean proofs of Levent Alpöge and Tristan Buckmaster and the proof-reader wrappers. The authors have not reviewed these changes. See `CREDIT.md`.

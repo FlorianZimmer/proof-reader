@@ -108,7 +108,7 @@ jobs:
         report = {"authors_commit": os.environ["NS_COMMIT"], "module_exit_codes": codes,
                   "all_compiled": all(c == "0" for c in codes.values()),
                   "printed": len(names), "passing": sum(r["pass"] for r in rows.values()),
-                  "errors_in_report": "error" in text.lower(), "results": rows}
+                  "errors_in_report": bool(re.search(r"(?m)^(error|.*: error)", text)), "results": rows}
         (out / "edition-axioms.json").write_text(json.dumps(report, indent=2) + "\n")
         print(json.dumps({k: v for k, v in report.items() if k != "results"}, indent=2))
         bad = [n for n, r in rows.items() if not r["pass"]]

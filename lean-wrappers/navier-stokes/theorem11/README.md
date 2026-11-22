@@ -18,8 +18,9 @@ satisfies
 This is the premise the authors' Lean route uses (`Breakdown.IsSimilarityProfile`
 with the periodicity and nonvanishing of `PeriodicSimilarityProfileExists`). It
 is stronger than the hypothesis printed in the paper, which has only the bounds
-(1.3) on W and ∇W; Remark 1.2 of the paper derives the rest, and that step is
-not formalized (open target `Theorem11.OpenTarget.PaperSpace`).
+(1.3) on W and ∇W. Remark 1.2 of the paper derives the bound on ∇²W; the bound
+on ∇q is a further assumption of the formal premise. Neither derivation from
+(1.3) is formalized (open target `Theorem11.OpenTarget.PaperSpace`).
 
 ## What is proved
 
@@ -79,8 +80,8 @@ not derived here and what each lacks:
   with smooth periodic pressure, so the torus rates cannot be moved to a
   physical solution.
 - `OpenTarget.PaperSpace` (`PaperTheorem11Space`): the printed hypothesis
-  (1.2)–(1.3) needs Remark 1.2 (the interior estimate giving the bounds on
-  ∇²W and ∇q), and the printed error in the original variables,
+  (1.2)–(1.3) needs the bounds on ∇²W (Remark 1.2's interior estimate) and
+  on ∇q, derived from (1.3), and the printed error in the original variables,
   ‖∇(u(t) − u*_1(t))‖₂ ≤ C (1−t)^(κ−1/4), needs the change of variables from
   the self-similar bound for fields that are only smooth with square
   integrable gradient.
