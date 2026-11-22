@@ -1,0 +1,202 @@
+# Compiles the adapted edition's Lean statement layer (47 numbered results) against the authors'
+# package at the pinned commit, without editing any of their files: the installer checks every
+# original file against its pin, adds the new modules and appends a delimited Lake section. It then
+# prints the axioms of every proved numbered result, and judges the two main statements with
+# Comparator (Lean's kernel plus four external kernels), with a deliberately weakened solution as
+# the control that must be rejected. Artifacts hold logs and exit codes only.
+name: Compile the Navier–Stokes edition statement layer and judge it with Comparator
+'on':
+  workflow_dispatch: {}
+  push:
+    branches:
+    - claude/navier-stokes-*
+    paths:
+    - .github/workflows/navier-stokes-edition.yml
+    - lean-wrappers/navier-stokes-edition/**
+permissions:
+  contents: read
+concurrency:
+  group: navier-stokes-edition
+  cancel-in-progress: false
+jobs:
+  compile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 355
+    defaults:
+      run:
+        shell: bash
+    env:
+      NS_COMMIT: ad53419de079eb8f95f60313473374624a348546
+      NS: /home/runner/ns
+      OUT: /home/runner/out
+      WRAP: lean-wrappers/navier-stokes-edition
+      EXPORT_COMMIT: 15f6055e299ad5b89345e533cc2192f4cc00f659
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+    - name: Free disk space
+      run: |
+        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+        df -h / | tail -1
+    - name: Install elan
+      run: |
+        curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+        echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+    - name: Fetch the authors' repository at the pinned commit
+      run: |
+        mkdir -p "$OUT"
+        git init -q "$NS" && cd "$NS"
+        git remote add origin https://github.com/tristanbuckmaster/navier-stokes.git
+        git fetch -q --depth 1 origin "$NS_COMMIT" && git checkout -q FETCH_HEAD
+        git rev-parse HEAD | tee "$OUT/ns-commit.txt"
+    - name: Restore the package's compiled files from the Comparator build
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ env.NS }}/lean/.lake/build
+        key: ns-edition-${{ env.NS_COMMIT }}-${{ github.run_id }}
+        restore-keys: |
+          ns-build-v3-${{ env.NS_COMMIT }}-
+    - name: Fetch Mathlib's compiled files (official cache)
+      working-directory: ${{ env.NS }}/lean
+      run: lake exe cache get
+    - name: Check the authors' files against their pins and add the edition modules
+      run: |
+        python3 "$WRAP/scripts/install.py" "$NS/lean" --check-only | tee "$OUT/install-check.json"
+        python3 "$WRAP/scripts/install.py" "$NS/lean" | tee "$OUT/install.json"
+        git -C "$NS" status --short | tee "$OUT/added-files.txt"
+        git -C "$NS" diff --stat | tee "$OUT/changed-tracked-files.txt"
+        (cd "$GITHUB_WORKSPACE/$WRAP" && find lean support comparison -name '*.lean*' -exec sha256sum {} +) > "$OUT/edition-sources.sha256"
+    - name: Compile each top module and record its exit code
+      working-directory: ${{ env.NS }}/lean
+      run: |
+        mods="EditionContracts PhysicalStatement SpatialScaling MainTheorems SectionsTwoSix SectionSeven AppendixB OpenTargets EditionStatements EditionChallenge WeakenedMain EditionAxioms Theorem11TorusConvergence"
+        for m in $mods; do
+          start=$(date +%s)
+          if timeout --kill-after=60s 150m lake build "$m" > "$OUT/build-$m.log" 2>&1; then c=0; else c=$?; fi
+          echo "$c" > "$OUT/build-$m.exit"
+          echo "$m exit $c after $(( $(date +%s) - start ))s"
+          grep -E '^(error|warning: declaration uses .sorry.)' "$OUT/build-$m.log" | head -8 || true
+        done
+    - name: Print and check the axioms of every proved numbered result
+      if: always()
+      working-directory: ${{ env.NS }}/lean
+      run: |
+        if [ "$(cat "$OUT/build-EditionAxioms.exit" 2>/dev/null)" = 0 ]; then
+          lake env lean EditionAxioms.lean > "$OUT/axioms-edition.txt" 2>&1 || true
+        else
+          echo "EditionAxioms did not build; axioms not printed" > "$OUT/axioms-edition.txt"
+        fi
+        python3 - <<'PY'
+        import json, os, re
+        from pathlib import Path
+        out = Path(os.environ["OUT"])
+        wrap = Path(os.environ["GITHUB_WORKSPACE"]) / os.environ["WRAP"]
+        text = (out / "axioms-edition.txt").read_text(errors="replace")
+        names = re.findall(r"#print axioms (\S+)", (wrap / "lean/EditionAxioms.lean").read_text())
+        allowed = {"propext", "Classical.choice", "Quot.sound"}
+        rows = {}
+        for n in names:
+            m = re.search(r"'" + re.escape(n) + r"' depends on axioms: \[([^\]]*)\]", text)
+            ax = sorted(a.strip() for a in m.group(1).split(",") if a.strip()) if m else None
+            if m is None and re.search(r"'" + re.escape(n) + r"' does not depend on any axioms", text):
+                ax = []
+            rows[n] = {"axioms": ax, "pass": ax is not None and set(ax) <= allowed}
+        codes = {p.name[len("build-"):-len(".exit")]: p.read_text().strip() for p in sorted(out.glob("build-*.exit"))}
+        report = {"authors_commit": os.environ["NS_COMMIT"], "module_exit_codes": codes,
+                  "all_compiled": all(c == "0" for c in codes.values()),
+                  "printed": len(names), "passing": sum(r["pass"] for r in rows.values()),
+                  "errors_in_report": "error" in text.lower(), "results": rows}
+        (out / "edition-axioms.json").write_text(json.dumps(report, indent=2) + "\n")
+        print(json.dumps({k: v for k, v in report.items() if k != "results"}, indent=2))
+        bad = [n for n, r in rows.items() if not r["pass"]]
+        print("not passing:", bad)
+        PY
+    - name: Build lean4export with Lean v4.33.1
+      if: always()
+      run: |
+        git init -q "$RUNNER_TEMP/export" && cd "$RUNNER_TEMP/export"
+        git remote add origin https://github.com/leanprover/lean4export.git
+        git fetch -q --depth 1 origin "$EXPORT_COMMIT" && git checkout -q FETCH_HEAD
+        echo 'leanprover/lean4:v4.33.1' > lean-toolchain
+        lake build && ls .lake/build/bin
+    - name: Write the exports of the challenge, the solution and the weakened control
+      if: always()
+      timeout-minutes: 120
+      working-directory: ${{ env.NS }}/lean
+      run: |
+        X="$RUNNER_TEMP/export/.lake/build/bin/lean4export"
+        PRELUDE="propext Quot.sound Classical.choice Nat.add Nat.sub Nat.mul Nat.pow Nat.gcd Nat.div Nat.mod Nat.beq Nat.ble Nat.land Nat.lor Nat.xor Nat.shiftLeft Nat.shiftRight String.ofList Char.ofNat List eagerReduce Nat String String.mk Char optParam autoParam semiOutParam outParam"
+        ROOTS="NavierStokes.theorem_1_1_space NavierStokes.conditional_main"
+        mkdir -p "$RUNNER_TEMP/x"
+        ex() {
+          echo "== $1"
+          if [ "$(cat "$OUT/build-$1.exit")" != 0 ]; then echo "$1 did not build; no export"; return 0; fi
+          lake env "$X" "$1" -- Quot Quot.mk Quot.lift Quot.ind $ROOTS $PRELUDE > "$RUNNER_TEMP/x/$2.export" 2> "$OUT/export-$2.log" || echo "export of $1 failed: $?" | tee -a "$OUT/export-$2.log"
+        }
+        ex EditionChallenge challenge
+        ex MainTheorems solution
+        ex WeakenedMain control
+        ls -l "$RUNNER_TEMP/x"; (cd "$RUNNER_TEMP/x" && sha256sum *.export) | tee "$OUT/exports.sha256"
+    - name: Install the sandbox Comparator uses, and Lean v4.36.0
+      if: always()
+      run: |
+        sudo apt-get update -qq && sudo apt-get install -y -qq bubblewrap
+        sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+        mkdir -p "$RUNNER_TEMP/judge" && cd "$RUNNER_TEMP/judge"
+        echo 'leanprover/lean4:v4.36.0' > lean-toolchain
+        lake --version
+        bin="$(dirname "$(elan which lake)")"
+        export PATH="$bin:$PATH"
+        echo "$bin" >> "$GITHUB_PATH"
+        for k in leanchecker-paranoid nanoda_bin con-leche con-ron; do command -v "$k" || { echo "missing $k"; exit 1; }; done | tee "$OUT/kernels.txt"
+    - name: Comparator on the two main statements and on the weakened controls
+      if: always()
+      timeout-minutes: 200
+      working-directory: ${{ runner.temp }}/judge
+      run: |
+        cp "$GITHUB_WORKSPACE/$WRAP/comparator.json" positive.json
+        cp "$GITHUB_WORKSPACE/$WRAP/comparator-control.json" control.json
+        cp "$GITHUB_WORKSPACE/$WRAP/comparison/comparator-space-control.json" space-control.json
+        cp "$GITHUB_WORKSPACE/$WRAP/comparison/comparator-main-control.json" main-control.json
+        cp positive.json control.json space-control.json main-control.json "$OUT/"
+        lake --version > "$OUT/judge-lean.txt"; bwrap --version >> "$OUT/judge-lean.txt"
+        run() {
+          echo "== $1 (solution export $2)"; local start=$(date +%s)
+          if [ ! -s "$RUNNER_TEMP/x/challenge.export" ] || [ ! -s "$RUNNER_TEMP/x/$2.export" ]; then echo "missing export" > "$OUT/$1.log"; echo 2 > "$OUT/$1.exit"; return 0; fi
+          if timeout --kill-after=60s 90m lake comparator --config "$1.json" --challenge-from-export "$RUNNER_TEMP/x/challenge.export" --solution-from-export "$RUNNER_TEMP/x/$2.export" > "$OUT/$1.log" 2>&1; then echo 0 > "$OUT/$1.exit"; else echo $? > "$OUT/$1.exit"; fi
+          tail -25 "$OUT/$1.log"; echo "exit $(cat "$OUT/$1.exit") after $(( $(date +%s) - start ))s"
+        }
+        run positive solution
+        run space-control control
+        run main-control control
+        run control control
+        python3 - <<'PYJUDGE'
+        import json, os
+        from pathlib import Path
+        out = Path(os.environ["OUT"])
+        names = ["positive", "space-control", "main-control", "control"]
+        codes = {n: int((out / f"{n}.exit").read_text()) for n in names}
+        def rejected(n, decl):
+            log = (out / f"{n}.log").read_text(errors="replace")
+            return codes[n] == 1 and f"Challenge and solution theorem statement do not match: '{decl}'" in log
+        controls = {"space-control": rejected("space-control", "NavierStokes.theorem_1_1_space"),
+                    "main-control": rejected("main-control", "NavierStokes.conditional_main"),
+                    "control": codes["control"] == 1 and "Challenge and solution theorem statement do not match" in (out / "control.log").read_text(errors="replace")}
+        accepted = codes["positive"] == 0 and all(controls.values())
+        report = {"status": "accepted" if accepted else "no_verified_pass",
+                  "authors_commit": os.environ["NS_COMMIT"], "exit_codes": codes,
+                  "controls_rejected_for_expected_statement_mismatch": controls,
+                  "theorem_names": json.loads((out / "positive.json").read_text())["theorem_names"]}
+        (out / "edition-comparator.json").write_text(json.dumps(report, indent=2) + "\n")
+        print(json.dumps(report, indent=2))
+        if not accepted:
+            raise SystemExit("Comparator did not accept the main statements with every expected control rejection")
+        PYJUDGE
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: navier-stokes-edition-statements
+        path: ${{ env.OUT }}
+        retention-days: 7
+        if-no-files-found: error

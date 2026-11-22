@@ -1,0 +1,42 @@
+{
+  "theorem_names": [
+    "NavierStokes.theorem_1_1_space",
+    "NavierStokes.lemma_3_2",
+    "NavierStokes.lemma_3_3",
+    "NavierStokes.lemma_3_5",
+    "NavierStokes.lemma_4_5",
+    "NavierStokes.theorem_7_1",
+    "NavierStokes.corollary_7_2",
+    "NavierStokes.lemma_7_4",
+    "NavierStokes.proposition_7_5",
+    "NavierStokes.lemma_7_6",
+    "NavierStokes.lemma_7_7",
+    "NavierStokes.proposition_7_8",
+    "NavierStokes.proposition_7_9",
+    "NavierStokes.proposition_7_10",
+    "NavierStokes.proposition_7_11",
+    "NavierStokes.proposition_B_1",
+    "NavierStokes.lemma_B_2",
+    "NavierStokes.lemma_B_3",
+    "NavierStokes.proposition_B_4",
+    "NavierStokes.lemma_B_5",
+    "NavierStokes.lemma_B_6",
+    "NavierStokes.lemma_B_7",
+    "NavierStokes.proposition_B_8",
+    "NavierStokes.lemma_B_9",
+    "NavierStokes.lemma_B_10",
+    "NavierStokes.lemma_B_12",
+    "NavierStokes.lemma_B_13",
+    "NavierStokes.proposition_B_14",
+    "NavierStokes.conditional_main",
+    "NavierStokes.main_of_certificate",
+    "NavierStokes.main_of_cell_conditions",
+    "NavierStokes.physical_error_bound",
+    "NavierStokes.spacePhysicalBlowup_of_spaceBlowup"
+  ],
+  "permitted_axioms": [
+    "propext",
+    "Quot.sound",
+    "Classical.choice"
+  ]
+}

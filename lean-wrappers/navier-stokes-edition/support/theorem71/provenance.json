@@ -1,0 +1,24 @@
+{
+  "authors_commit": "ad53419de079eb8f95f60313473374624a348546",
+  "mode": "added_modules_only",
+  "source_files": [
+    {
+      "path": "Breakdown/Cert/ExtendedSigmaProfileOfHeld.lean",
+      "sha256": "e29908b88e0fb8fa9645306dd680a822f259ce15ccaa1c625ca6d38b1b79cb63",
+      "source_modified": false
+    },
+    {
+      "path": "Breakdown/Cert/Rescale.lean",
+      "sha256": "cf499e35d4af86c38dfee6ab979353f81d3ae7d6ece5a25472fd7ca1b0e1d0ec",
+      "source_modified": false
+    },
+    {
+      "path": "Breakdown/Weak/OrbitOfParts.lean",
+      "sha256": "5cda127f5c89490c0894d801271ec0d256382243dd4b4e9cf644f04a0496d32b",
+      "source_modified": false
+    }
+  ],
+  "description": "The first two keep-theorems reuse public original helpers. The orbit keep-theorem reuses copied private helper proofs in a fresh namespace. Authors source files are unchanged.",
+  "compiled": false,
+  "comparator_run": false
+}

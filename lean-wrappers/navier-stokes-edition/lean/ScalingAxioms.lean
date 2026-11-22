@@ -1,0 +1,13 @@
+import SpatialScaling
+
+#print axioms NavierStokes.scaleVelocity_fderiv
+#print axioms NavierStokes.scaleVelocity_gradientSquare
+#print axioms NavierStokes.finiteGradient_scaleVelocity
+#print axioms NavierStokes.gradientIntegral_scaleVelocity
+#print axioms NavierStokes.gradientNorm_scaleVelocity
+#print axioms NavierStokes.finiteGradient_of_scaleVelocity
+#print axioms NavierStokes.sqrt_sqrt_eq_quarter
+#print axioms NavierStokes.scale_physical_error
+#print axioms NavierStokes.physical_error_bound
+#print axioms NavierStokes.paperSpaceConclusion_of_spaceConclusion
+#print axioms NavierStokes.spacePhysicalBlowup_of_spaceBlowup

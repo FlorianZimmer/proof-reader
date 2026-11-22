@@ -1,0 +1,776 @@
+{
+  "Theorem 1.1": {
+    "lean": "NavierStokes.theorem_1_1_space",
+    "status": "reduced",
+    "uses": [
+      "Breakdown.transferHolds_of_dichotomy",
+      "Breakdown.dichotomyHolds",
+      "Breakdown.profileOrbit_holds",
+      "Breakdown.mildRegular_realization",
+      "Breakdown.eq_of_isSolutionOn"
+    ],
+    "differs_from_edition": "Whole-space conclusion (1.6) is retained in physical variables, with arbitrary initial approximation, uniqueness and no finite-energy smooth continuation. The formal hypotheses explicitly add second-derivative and pressure-gradient decay. The quantitative torus part (1.7) and deduction of the extra decay from the printed profile assumptions remain open. Revised N1–N6 edition wording was not supplied.",
+    "note": "For each specified smooth recurrent profile satisfying all displayed decay assumptions and each ε>0, the same smooth compactly supported datum and solution on [0,1) satisfy the two-sided gradient rate and the physical profile-error estimate. The physical error conversion is proved without a decay assumption on that solution.",
+    "support_uses": [
+      "Theorem11.theorem11SpaceBlowup",
+      "NavierStokes.spacePhysicalBlowup_of_spaceBlowup"
+    ],
+    "additional_open_targets": [
+      "NavierStokes.theorem_1_1_torus",
+      "NavierStokes.theorem_1_1_printed_space",
+      "NavierStokes.theorem_1_1_printed_torus"
+    ],
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Proposition 2.1": {
+    "lean": "NavierStokes.proposition_2_1_target",
+    "status": "open",
+    "uses": [
+      "Breakdown.transferHolds_of_dichotomy",
+      "Breakdown.dichotomyHolds"
+    ],
+    "differs_from_edition": "The target preserves the printed statement. The available transfer theorem chooses a close datum instead of correcting every nearby prescribed datum in one fixed finite-dimensional space.",
+    "note": "One fixed correction space must work for every datum in the stated neighbourhood.",
+    "validation": "Proof or target supplied; compilation status belongs to the aggregate return log.",
+    "open_reason": "Retain the datum parameter and correction space through the contraction/gluing proof, recover uniform two-sided physical rates, and upgrade the printed profile class.",
+    "proved_ingredient": "NavierStokes.proposition_2_1_available",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Proposition 2.2": {
+    "lean": "NavierStokes.proposition_2_2_target",
+    "status": "open",
+    "uses": [
+      "Breakdown.Periodic.TorusBlowup",
+      "Breakdown.Periodic.torusBlowup_of_parts"
+    ],
+    "differs_from_edition": "The target uses a mean-zero unit-torus Fourier realization and retains T≤1, both rates and the local physical error. The existing TorusBlowup assertion only retains unboundedness.",
+    "note": "The full periodic mild trajectory must retain its rate and local comparison with the prescribed profile.",
+    "validation": "Proof or target supplied; compilation status belongs to the aggregate return log.",
+    "open_reason": "Assemble the existing periodic trajectory, two-sided rates, zero mean, finite local H¹ error, and the printed-profile upgrade into one statement.",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Lemma 2.3": {
+    "lean": "NavierStokes.lemma_2_3_target",
+    "status": "open",
+    "uses": [
+      "Breakdown.mildRegular_realization",
+      "Breakdown.MildRegular"
+    ],
+    "differs_from_edition": "The target includes both domains, one representative on the whole half-open interval, and energy nonincrease. The authors’ linked result is on each closed whole-space interval.",
+    "note": "The whole-space ingredients are available; the combined lemma still needs periodic mild-to-smooth regularity.",
+    "validation": "Proof or target supplied; compilation status belongs to the aggregate return log.",
+    "open_reason": "Combine the supplied whole-space wrapper’s gluing and energy arguments, and prove a periodic counterpart of MildRegular producing smooth periodic velocity and pressure.",
+    "proved_ingredient": "NavierStokes.lemma_2_3_available",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Lemma 3.1": {
+    "lean": "NavierStokes.lemma_3_1_target",
+    "status": "open",
+    "uses": [
+      "Breakdown.Freq.bilin_holds",
+      "Breakdown.Freq.bilinShift_holds",
+      "Breakdown.Freq.bilinCont_holds",
+      "Breakdown.Freq.phiX"
+    ],
+    "differs_from_edition": "The target includes the arbitrary L^(3/2) projected-heat operator. The proved ingredient establishes the bilinear forcing subclass only.",
+    "note": "The L^(3/2) source class must be represented directly; an L² operator does not supply it.",
+    "validation": "Proof or target supplied; compilation status belongs to the aggregate return log.",
+    "open_reason": "Construct the continuous linear projected-heat map on L^(3/2), identify it by duality with phiX, and prove its sharp bound, continuity and heat-shift identity.",
+    "proved_ingredient": "NavierStokes.lemma_3_1_available",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Lemma 3.2": {
+    "lean": "NavierStokes.lemma_3_2",
+    "status": "reduced",
+    "uses": [
+      "Breakdown.Freq.bilinCompact_holds",
+      "Breakdown.Freq.testDense_holds",
+      "Breakdown.Freq.bilinX"
+    ],
+    "differs_from_edition": "none",
+    "note": "Compactness now holds for every first input in homogeneous H¹, extending the authors’ dense-test-span theorem.",
+    "validation": "Proof or target supplied; compilation status belongs to the aggregate return log.",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true,
+      "reason_for_reduced_label": "A complete source proof is supplied, but this return does not label the numbered result proved before its own Lean elaboration finishes."
+    },
+    "implementation_kind": "new proof of the complete stated form"
+  },
+  "Lemma 3.3": {
+    "lean": "NavierStokes.lemma_3_3",
+    "status": "reduced",
+    "uses": [
+      "Breakdown.varConstIntegral"
+    ],
+    "differs_from_edition": "none; the Banach-space result uses the stated abstract heat-bilinear hypotheses, and the auxiliary suprema are obtained within the proof.",
+    "note": "Continuity on the compact interval supplies the bounds needed by the authors’ quantitative integral theorem.",
+    "validation": "Proof or target supplied; compilation status belongs to the aggregate return log.",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true,
+      "reason_for_reduced_label": "A complete source proof is supplied, but this return does not label the numbered result proved before its own Lean elaboration finishes."
+    },
+    "implementation_kind": "new proof of the complete stated form"
+  },
+  "Lemma 3.4": {
+    "lean": "NavierStokes.lemma_3_4_target",
+    "status": "open",
+    "uses": [
+      "Breakdown.pieceOperator",
+      "Breakdown.Periodic.InverseAlgebra.Internal.sub_apply_inverse_one_sub"
+    ],
+    "differs_from_edition": "The target asserts a bounded linear inverse on every finite interval, without a small operator-norm assumption.",
+    "note": "A local Neumann inverse is an ingredient; the paper’s arbitrary-interval Volterra inverse remains to be assembled.",
+    "validation": "Proof or target supplied; compilation status belongs to the aggregate return log.",
+    "open_reason": "Subdivide the interval, solve the linear Volterra equation on short pieces, and prove the bounded linear gluing and uniqueness statement.",
+    "proved_ingredient": "NavierStokes.lemma_3_4_available",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Lemma 3.5": {
+    "lean": "NavierStokes.lemma_3_5",
+    "status": "reduced",
+    "uses": [
+      "Breakdown.varConstIntegral",
+      "Breakdown.mildUnique"
+    ],
+    "differs_from_edition": "none; the restriction identity is supplied for independent f and h, and the uniqueness clause concerns quadratic mild solutions.",
+    "note": "The returned proof extends the authors’ quadratic restriction argument to the independent factors printed in (3.13).",
+    "validation": "Proof or target supplied; compilation status belongs to the aggregate return log.",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true,
+      "reason_for_reduced_label": "A complete source proof is supplied, but this return does not label the numbered result proved before its own Lean elaboration finishes."
+    },
+    "implementation_kind": "new proof of the complete stated form"
+  },
+  "Lemma 3.6": {
+    "lean": "NavierStokes.lemma_3_6_target",
+    "status": "open",
+    "uses": [
+      "Breakdown.Freq.mild_holds",
+      "Breakdown.Freq.IsWeakSolution"
+    ],
+    "differs_from_edition": "The target retains the paper’s continuous homogeneous H¹ weak-solution class; the available theorem imposes additional decay and L²-difference conditions.",
+    "note": "The extra assumptions in the existing weak-to-mild theorem remain visible.",
+    "validation": "Proof or target supplied; compilation status belongs to the aggregate return log.",
+    "open_reason": "Run the weak-to-mild argument for continuous homogeneous H¹ curves tested against solenoidal compactly supported fields, without assuming pointwise decay or L² differences.",
+    "proved_ingredient": "NavierStokes.lemma_3_6_available",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Lemma 3.7": {
+    "lean": "NavierStokes.lemma_3_7_target",
+    "status": "open",
+    "uses": [
+      "Breakdown.Periodic.kernelSharpBound_holds",
+      "Breakdown.Periodic.coeff",
+      "Breakdown.Periodic.kernel"
+    ],
+    "differs_from_edition": "The target keeps every period L>0 and lag τ>0, mean zero and the homogeneous norm; the available estimate is for the unit torus, inhomogeneous H¹ and 0<τ≤1.",
+    "note": "The constants must be independent of the torus period, and the arbitrary L^(3/2) forcing class must be retained.",
+    "validation": "Proof or target supplied; compilation status belongs to the aggregate return log.",
+    "open_reason": "Prove the projected-heat extension and the period-uniform homogeneous estimates, including mean-zero convection and its L^(3/2) membership.",
+    "proved_ingredient": "NavierStokes.lemma_3_7_available",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Proposition 4.1": {
+    "lean": "NavierStokes.proposition_4_1_target",
+    "status": "open",
+    "uses": [
+      "Breakdown.orbitPhysical",
+      "Breakdown.embeddedProfileOrbit_holds"
+    ],
+    "differs_from_edition": "The target retains the printed profile, its nonzero velocity and its prescribed recurrence. The existing orbit construction uses the enhanced library profile class.",
+    "note": "The physical mild curve must keep the same profile, period and isometry.",
+    "validation": "Proof or target supplied; compilation status belongs to the aggregate return log.",
+    "open_reason": "Upgrade the printed profile bounds, identify the physical curve in homogeneous H¹ and export its exact recurrence and nonvanishing.",
+    "proved_ingredient": "NavierStokes.proposition_4_1_available",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Lemma 4.2": {
+    "lean": "NavierStokes.lemma_4_2_target",
+    "status": "open",
+    "uses": [
+      "Breakdown.orbitNorm",
+      "Breakdown.orbitBound"
+    ],
+    "differs_from_edition": "The target retains both the iterated physical recurrence and the two-sided physical norm rate; the proved ingredient bounds the similarity orbit above and below.",
+    "note": "Positive orbit bounds are proved; the numbered statement still needs its exact scaling and recurrence export.",
+    "validation": "Proof or target supplied; compilation status belongs to the aggregate return log.",
+    "open_reason": "Apply the dilation norm identity and iterate the recurrence while retaining the prescribed printed profile.",
+    "proved_ingredient": "NavierStokes.lemma_4_2_available",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Proposition 4.3": {
+    "lean": "NavierStokes.proposition_4_3_target",
+    "status": "open",
+    "uses": [
+      "Breakdown.stepData",
+      "Breakdown.dichotomyHolds",
+      "Breakdown.periodicInverse"
+    ],
+    "differs_from_edition": "The target is a bounded inverse on Cκ([0,1);X). The available theorem is a bounded inverse on sequences of short solution pieces.",
+    "note": "A sequence-space inverse must be transported to the paper’s weighted trajectory space.",
+    "validation": "Proof or target supplied; compilation status belongs to the aggregate return log.",
+    "open_reason": "Construct the bounded identification with weighted trajectories, keep the datum correction in a fixed finite-dimensional test-field space, and prove the exact right-inverse formula.",
+    "proved_ingredient": "NavierStokes.proposition_4_3_available",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Lemma 4.4": {
+    "lean": "NavierStokes.lemma_4_4_target",
+    "status": "open",
+    "uses": [
+      "Breakdown.monodromy"
+    ],
+    "differs_from_edition": "The target uses the paper’s single-period Volterra monodromy. The authors’ proof uses a product of sufficiently short steps.",
+    "note": "The compactness theorem is available for the step product; equality with the displayed monodromy remains to be proved.",
+    "validation": "Proof or target supplied; compilation status belongs to the aggregate return log.",
+    "open_reason": "Prove that the single-period Volterra inverse exists and that its endpoint evolution equals the authors’ step product.",
+    "proved_ingredient": "NavierStokes.lemma_4_4_available",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Lemma 4.5": {
+    "lean": "NavierStokes.lemma_4_5",
+    "status": "reduced",
+    "uses": [
+      "Breakdown.dichotomyHolds"
+    ],
+    "differs_from_edition": "States the authors’ quantitative geometric spectral bounds for T₀+C. The printed formulation chooses an intermediate Θ and writes the two resulting convergent series for the paper’s monodromy.",
+    "note": "The spectral theorem is proved in a form with a strict geometric gap; its concrete monodromy identification is covered by Lemma 4.4’s open target.",
+    "validation": "Proof or target supplied; compilation status belongs to the aggregate return log.",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Lemma 4.6": {
+    "lean": "NavierStokes.lemma_4_6_target",
+    "status": "open",
+    "uses": [
+      "Breakdown.discreteDichotomy",
+      "Breakdown.periodicInverse"
+    ],
+    "differs_from_edition": "The target is formulated for an abstract recurrent MildFramework orbit and keeps the continuous-to-discrete formulas, forcing linearity and the uniform weighted estimate.",
+    "note": "The forcing sequence is explicitly computed from g and is independent of the datum χ.",
+    "validation": "Proof or target supplied; compilation status belongs to the aggregate return log.",
+    "open_reason": "Normalize the forced Volterra equation on every similarity interval and connect those pieces to the exact discrete recursion with the stated uniform bound.",
+    "proved_ingredient": "NavierStokes.lemma_4_6_available",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Lemma 4.7": {
+    "lean": "NavierStokes.lemma_4_7_target",
+    "status": "open",
+    "uses": [
+      "Breakdown.varConstIntegral"
+    ],
+    "differs_from_edition": "The target keeps all three weighted estimates and chooses the constant from κ and CK before quantifying the space and operators.",
+    "note": "Local bounded-curve estimates do not yet state the endpoint-weighted convolution bounds.",
+    "validation": "Proof or target supplied; compilation status belongs to the aggregate return log.",
+    "open_reason": "Prove the weighted singular-kernel integral estimates uniformly in the Banach space and heat-bilinear operators with the given CK.",
+    "proved_ingredient": "NavierStokes.lemma_4_7_available",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Lemma 4.8": {
+    "lean": "NavierStokes.lemma_4_8_target",
+    "status": "open",
+    "uses": [
+      "Breakdown.contraction"
+    ],
+    "differs_from_edition": "The target keeps the arbitrary weighted residual and chooses ε₁ from κ and CK. The available contraction is stated for a sequence of short pieces.",
+    "note": "The smallness condition, norm of the correction, and corrected initial value are all explicit.",
+    "validation": "Proof or target supplied; compilation status belongs to the aggregate return log.",
+    "open_reason": "Transport the sequence-space contraction to the exact weighted residual formulation, or prove the contraction directly on the complete weighted trajectory space.",
+    "proved_ingredient": "NavierStokes.lemma_4_8_available",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Lemma 5.1": {
+    "lean": "NavierStokes.lemma_5_1_target",
+    "status": "open",
+    "uses": [
+      "Breakdown.Periodic.approxFieldProperties_holds",
+      "Breakdown.Periodic.cutoffGradientClose",
+      "Breakdown.Periodic.cutoffMassBound"
+    ],
+    "differs_from_edition": "The target keeps all r>0 and constants independent of r,t. The existing cutoff is centred at (1/2,1/2,1/2) with fixed inner/outer radii.",
+    "note": "The returned target includes both the H¹ error and the L² mass with their finiteness conditions.",
+    "validation": "Proof or target supplied; compilation status belongs to the aggregate return log.",
+    "open_reason": "Transfer the centred fixed-radius construction to the explicit origin-centred arbitrary-radius cutoff, retain both scale factors, and upgrade the printed profile premise.",
+    "proved_ingredient": "NavierStokes.lemma_5_1_available",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Lemma 6.1": {
+    "lean": "NavierStokes.lemma_6_1_target",
+    "status": "open",
+    "uses": [
+      "Breakdown.Periodic.heatDivFreeComparison",
+      "Breakdown.Periodic.HeatDivFreeComparison"
+    ],
+    "differs_from_edition": "The target retains every L≥1,t>0, compactly supported W^(1,1) tensor forcing, and the explicit CL^(-7/2) rate. The available comparison is local, has lag bounded away from zero, and supplies no explicit rate.",
+    "note": "An unspecified small-parameter threshold does not establish the printed uniform power of L.",
+    "validation": "Proof or target supplied; compilation status belongs to the aggregate return log.",
+    "open_reason": "Prove the periodized projected-heat comparison for weak tensor derivatives, uniformly in every positive lag, and retain the explicit L^(-7/2) dependence.",
+    "proved_ingredient": "NavierStokes.lemma_6_1_available",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Lemma 6.2": {
+    "lean": "NavierStokes.lemma_6_2_target",
+    "status": "open",
+    "uses": [
+      "Breakdown.Periodic.approxSizes",
+      "Breakdown.Periodic.approxResidualSmall",
+      "Breakdown.Periodic.transplantNorm"
+    ],
+    "differs_from_edition": "The target keeps the physical large-period formulation, equality of homogeneous norms and the L^(-1/2) residual. The proved ingredients give normalized interval bounds.",
+    "note": "The rate, lower constant and exact norm identity remain explicit in the target.",
+    "validation": "Proof or target supplied; compilation status belongs to the aggregate return log.",
+    "open_reason": "Assemble normalized interval estimates into the global weighted residual, transfer between the two periodic conventions, and retain the explicit period dependence.",
+    "proved_ingredient": "NavierStokes.lemma_6_2_available",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Lemma 6.3": {
+    "lean": "NavierStokes.lemma_6_3_target",
+    "status": "open",
+    "uses": [
+      "Breakdown.Periodic.shellInverseTransfer",
+      "Breakdown.Periodic.rightInversePerturb",
+      "Breakdown.Periodic.ComparisonSmall"
+    ],
+    "differs_from_edition": "The target specifies the approximate inverse (6.12) and CL^(-1/2) defect. The available theorem transfers an exact inverse under sufficiently small localized operator differences.",
+    "note": "The particular candidate and its error estimate require their own statement; existence of some exact inverse is different.",
+    "validation": "Proof or target supplied; compilation status belongs to the aggregate return log.",
+    "open_reason": "Identify the physical localized interaction maps, prove the uniform comparisons, and transfer the selected whole-space inverse to the explicit candidate, with all integrals and weighted norms finite.",
+    "proved_ingredient": "NavierStokes.lemma_6_3_available",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Theorem 7.1": {
+    "lean": "NavierStokes.theorem_7_1",
+    "status": "reduced",
+    "uses": [
+      "Breakdown.Cert.extendedExistsZeroHeldHolds_of",
+      "Breakdown.Cert.Internal.ExtendedSigmaProfileOfHeld.profile_joint",
+      "Breakdown.FarField.smoothFieldOfOrbit_holds",
+      "Breakdown.FarField.farFieldDecay_holds"
+    ],
+    "differs_from_edition": "The input is IsExtendedCertificate, with the formal approximate-profile regularity and decay requirements. The output also states Hessian and pressure-gradient decay. All parameter, correction, pin, bound and symmetry clauses of (7.38)–(7.39) are retained.",
+    "note": "One parameter, one period and one exact field are kept throughout. Three added proof modules replace the earlier patch workflow; the authors’ files remain unchanged.",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Corollary 7.2": {
+    "lean": "NavierStokes.corollary_7_2",
+    "status": "reduced",
+    "uses": [
+      "Breakdown.breakdownOnSpace_of_profile",
+      "Breakdown.Periodic.breakdownOnTorus_of_profile"
+    ],
+    "differs_from_edition": "Keeps the selected certificate profile and, for every epsilon>0, constructs the quantitative global space solution with the physical-variable error in (1.6), uniqueness and no continuation. It also concludes BreakdownOnSpace and BreakdownOnTorus. The quantitative torus trajectory and its convergence are not obtained.",
+    "note": "The space trajectory and physical error bound use the very same W selected by the certificate, with the same solution and constants as the original quantitative construction. The two nonexistence conclusions hold at every positive viscosity. Existence of a concrete valid certificate is assumed.",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Lemma 7.4": {
+    "lean": "NavierStokes.lemma_7_4",
+    "status": "reduced",
+    "uses": [
+      "Breakdown.Cert.Internal.FreeEnergyLocal.exists_energyCurve",
+      "Breakdown.Cert.freeInvHolds_of"
+    ],
+    "differs_from_edition": "Quantifies over the constructed free inverse, not all physical perturbations. Gives a continuous X representative, its integrated energy identity and the inequality, but does not explicitly conclude local absolute continuity, the almost-everywhere differentiated identity or the period pairing equality.",
+    "note": "The stored second component represents minus the Laplacian. The open converse from a physical free solution to this inverse is named separately.",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Proposition 7.5": {
+    "lean": "NavierStokes.proposition_7_5",
+    "status": "reduced",
+    "uses": [
+      "Breakdown.Cert.freeInvHolds_of",
+      "Breakdown.Cert.freeEquivariantHolds_of",
+      "Breakdown.Cert.periodContinuityHolds_of"
+    ],
+    "differs_from_edition": "States existence and symmetry preservation of the constructed bounded inverse and weak graph convergence with boundedness explicit. Does not identify the whole paper domain with its range or conclude full-sequence local strong convergence.",
+    "note": "Open definitions isolate the converse for arbitrary physical perturbations and the identification of the full local L2 limit.",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Lemma 7.6": {
+    "lean": "NavierStokes.lemma_7_6",
+    "status": "reduced",
+    "uses": [
+      "Breakdown.Cert.sliceSupBoundHolds_of",
+      "Breakdown.Cert.productBoundHolds_of",
+      "Breakdown.Cert.Internal.ProductBound.slice_real_le"
+    ],
+    "differs_from_edition": "The spatial bound is the displayed weighted bound in graph norms; the time-dependent estimate allows two different graph fields and also bounds the projected product. Its gradient supremum is essential and its domain is the authors’ graph representation.",
+    "note": "The reduction explicitly proves the weighted inequality from the authors’ sharper product estimate using their arithmetic–geometric mean lemma, with the exact coefficient c_w.",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Lemma 7.7": {
+    "lean": "NavierStokes.lemma_7_7",
+    "status": "reduced",
+    "uses": [
+      "Breakdown.Cert.extendedConvectionHolds_of",
+      "Breakdown.Cert.extendedInvarianceHolds_of",
+      "Breakdown.Cert.extendedConvectionCompactHolds_of"
+    ],
+    "differs_from_edition": "Bounds and compactness concern convection after solenoidal projection on the graph domain. No unprojected compactness conclusion or restriction that the bound depends only on the one displayed approximate-profile constant is asserted.",
+    "note": "The projection and the space on which the operator acts are stated explicitly; compactness in the smaller target is not presented as the paper’s full claim.",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Proposition 7.8": {
+    "lean": "NavierStokes.proposition_7_8",
+    "status": "reduced",
+    "uses": [
+      "Breakdown.Cert.extendedBorderedInvertibleHolds_of"
+    ],
+    "differs_from_edition": "Uses forcing f with v=freeInv(S(alpha),f), and states all four normalization equalities explicitly. The bijection is expressed as existence and uniqueness in forcing coordinates, not on all supplied physical perturbations.",
+    "note": "For each invariant target forcing and pin vector there is exactly one invariant bordered solution. No abstract invertibility assumption is passed to the theorem.",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Proposition 7.9": {
+    "lean": "NavierStokes.proposition_7_9",
+    "status": "reduced",
+    "uses": [
+      "Breakdown.Cert.extendedSupBoundHolds_of"
+    ],
+    "differs_from_edition": "Controls the essential gradient supremum of the constructed inverse and the projected bordered residual. The printed statement quantifies over every admissible physical perturbation and the supremum of its continuous representative.",
+    "note": "Finiteness is stated before converting the extended supremum to a real number. The stored twist and all constants appear in the inequality.",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Proposition 7.10": {
+    "lean": "NavierStokes.proposition_7_10",
+    "status": "reduced",
+    "uses": [
+      "Breakdown.Cert.extendedExistsZeroHeldHolds_of",
+      "Breakdown.Cert.extendedUnitWeightHolds",
+      "Breakdown.Cert.extendedAtProfileHolds"
+    ],
+    "differs_from_edition": "The held solution is for the certificate after unit-weight and at-profile reductions, with essential gradient bound. Its multiplier correction is explicitly related to the original multiplier by beta=-omega*beta_a.",
+    "note": "The same chosen parameter carries the equation, the pins, both size bounds and zero total multiplier; Theorem 7.1 transports these to the smooth actual correction.",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Proposition 7.11": {
+    "lean": "NavierStokes.proposition_7_11",
+    "status": "reduced",
+    "uses": [
+      "Breakdown.WeakProfile.weakOrbitOfParts_holds",
+      "Breakdown.FarField.smoothFieldOfOrbit_holds",
+      "Breakdown.FarField.integralEquationOfOrbit_holds",
+      "Breakdown.FarField.farFieldDecay_holds"
+    ],
+    "differs_from_edition": "Uses IsSigmaProfile, including uniform L6 and gradient bounds and an explicit square-integrable weak Hessian. The specified continuous X representative is an explicit hypothesis. The output retains the input period and agrees with this input at every time, with additional Hessian and pressure-gradient decay.",
+    "note": "The existential loss of the specified field is repaired: continuity upgrades the retained almost-everywhere-in-time identity to every time. Deriving the weak Hessian from the smaller premise is a named open bridge.",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Proposition B.1": {
+    "lean": "NavierStokes.proposition_B_1",
+    "status": "reduced",
+    "uses": [
+      "Breakdown.CoerciveWeak.pieceMultiplierDensityWeakHolds_proof"
+    ],
+    "differs_from_edition": "General admissible analytic weights and periodic weak perturbations; c and w₀ remain parameters; the density inequality is stated using positive/negative extended integrals. Set c=3/50 and w=w₀=39/50 to recover the printed constants.",
+    "note": "The multiplier, its norm bound and finite mu-seminorm follow from the authors’ density theorem; no numerical weights are verified.",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Lemma B.2": {
+    "lean": "NavierStokes.lemma_B_2",
+    "status": "reduced",
+    "uses": [
+      "Breakdown.CoerciveWeak.extendedCoerciveClause_of_pieceData_proved"
+    ],
+    "differs_from_edition": "The formal weak perturbation class and explicit regularity/admissibility hypotheses replace the paper’s informal references. The row lower estimate is assumed for all parameters. The constants remain symbolic.",
+    "note": "The two scalar budgets turn the multiplier estimate and the row remainder into the coercive inequality.",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Lemma B.3": {
+    "lean": "NavierStokes.lemma_B_3",
+    "status": "reduced",
+    "uses": [
+      "Breakdown.CertCell.modeDensityBridge_closed"
+    ],
+    "differs_from_edition": "The two nonnegative 4π identities are asserted separately, including infinite values. The paper writes a signed identity after assuming the negative integral finite.",
+    "note": "Positive and negative density each reduce from full space and one period to the quarter plane; finite negative part makes the signed interpretation unambiguous.",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Proposition B.4": {
+    "lean": "NavierStokes.proposition_B_4",
+    "status": "reduced",
+    "uses": [
+      "Breakdown.CertCell.cellJunctions_closed",
+      "Breakdown.CertCell.formNegFinite",
+      "Breakdown.CertCell.cellFormAssembly_closed",
+      "Breakdown.CellLayerSystem.layerJunctionFacts_of_parts",
+      "Breakdown.CertCell.coefficientLowerBounds_of_entries",
+      "Breakdown.CertCell.admissible_of_hypothesis"
+    ],
+    "differs_from_edition": "Uses all formal cell-system conditions and retains the source pressure/cell-state representation. Cell inequalities use positive and negative parts with row shares, strain slack, credit and actuator cost; the four printed remainder numbers are not reconstructed. The displayed exterior stretching inequality and square Hardy constant are available in component proofs, not extracted as separate clauses here.",
+    "note": "This is the proved formal cell package, including negative-part finiteness and each cell bound; it is not a literal restatement of (B.32)–(B.34).",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Lemma B.5": {
+    "lean": "NavierStokes.lemma_B_5",
+    "status": "reduced",
+    "uses": [
+      "Breakdown.CertCell.TailBand.angularModeBounds",
+      "Breakdown.CertCell.Assembly.offModeConditionSound_holds"
+    ],
+    "differs_from_edition": "The four angular bounds and the nonnegativity consequence under the coefficient test are explicit. The intermediate lower bound (B.36), written with f₁*, is not separately asserted.",
+    "note": "Angular inequalities and the region’s coefficient test give nonnegative charged modal density almost everywhere.",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Lemma B.6": {
+    "lean": "NavierStokes.lemma_B_6",
+    "status": "reduced",
+    "uses": [
+      "Breakdown.CertCell.TailBand.modeRayInverseSquare",
+      "Breakdown.CertCell.TailBand.angularModeBounds",
+      "Breakdown.CertCell.TailBand.pointwiseQuadraticTest",
+      "Breakdown.CertCell.TailBand.uniformCoefficientBounds",
+      "Breakdown.CertCell.TailBand.labelGradFinite",
+      "Breakdown.CertCell.TailBand.modeSquareInverseSquare_of_smooth",
+      "Breakdown.CertCell.TailBand.squareExteriorSmoothStatement",
+      "Breakdown.CertCell.TailBand.Internal.ExteriorLinks.lintegral_neg_le"
+    ],
+    "differs_from_edition": "The ray radius is measurable and lies between two positive finite constants; the square case requires the source reflection condition. The signed integral is represented by a finite negative integral bounded by the positive integral. The new proof exposes negative-part finiteness, which the source theorem’s conclusion omits.",
+    "note": "The added argument bounds the negative part by a finite Hardy-controlled term; the source files remain unchanged.",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Lemma B.7": {
+    "lean": "NavierStokes.lemma_B_7",
+    "status": "reduced",
+    "uses": [
+      "Breakdown.CertCell.Certificate.signedTreeLowerBound",
+      "Breakdown.CertCell.Certificate.pivotCountPositive"
+    ],
+    "differs_from_edition": "Retains the nonnegative root passed form in the lower bound; dropping it gives the printed inequality. The conclusion now explicitly states strict positivity on every nonzero vector orthogonal to all negative columns and also retains the dimension bound.",
+    "note": "The root lower bound, strict positivity on the common column kernel and the dimension estimate are all exposed; the kernel argument is copied into an added module without altering the authors’ files.",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Proposition B.8": {
+    "lean": "NavierStokes.proposition_B_8",
+    "status": "reduced",
+    "uses": [
+      "Breakdown.CertCell.rowRestClause_closed"
+    ],
+    "differs_from_edition": "Assumes the full formal cell-system conditions and uses periodic weak perturbations. The formal estimate is expressed in nonnegative extended integrals with stored coercivity/pin weights.",
+    "note": "All cell conditions imply finite negative density and the row lower estimate for each admissible parameter and perturbation.",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Lemma B.9": {
+    "lean": "NavierStokes.lemma_B_9",
+    "status": "reduced",
+    "uses": [
+      "Breakdown.CertReduction.gapTransferBridgeHolds_proof",
+      "Breakdown.CertReduction.formShiftBridgeHolds_proof",
+      "Breakdown.CertReduction.frozenFormBridgeHolds_of_convection",
+      "Breakdown.CertReduction.convectionIdentity_holds"
+    ],
+    "differs_from_edition": "Uses a finite decomposition into differences with L²/L³ derivative bounds, with all measurability and derivative-identification hypotheses stated in the corresponding structures. The two-piece specialization gives the printed coefficient budgets.",
+    "note": "The profile-difference estimate and reference-strain estimate combine to give the perturbation and frozen-form bounds, for any c₃ above the sum budget.",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Lemma B.10": {
+    "lean": "NavierStokes.lemma_B_10",
+    "status": "reduced",
+    "uses": [
+      "Breakdown.CertReduction.adjointQuadTerm_of",
+      "Breakdown.CertReduction.matrixFacts",
+      "Breakdown.CertReduction.perturbationSliceHolds",
+      "Breakdown.CertReduction.energyBoundsHolds_proof",
+      "Breakdown.CertReduction.cubicWeightProductHolds",
+      "Breakdown.CertReduction.periodGlue"
+    ],
+    "differs_from_edition": "The statement bounds the integral of the product of norms, which is stronger than the absolute pairing estimate, and allows any measurable test field with the stated uniform L²/L³ bound. Its Boolean parameter selects the two analytic cases.",
+    "note": "The L² and L³ alternatives give the paper’s nonlinear adjoint coefficient with explicit weight dependence.",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Lemma B.11": {
+    "lean": "NavierStokes.lemma_B_11",
+    "status": "open",
+    "uses": [
+      "Breakdown.AdjointDefect.dualBoundedBound_of_parts",
+      "Breakdown.AdjointDefect.remainderPlainHolds_proof",
+      "Breakdown.AdjointDefect.remainderAzimuthalHolds_proof",
+      "Breakdown.AdjointDefect.weightedPairingIntegrable_proof"
+    ],
+    "differs_from_edition": "The target retains joint absolute integrability. A companion proof implementation, NavierStokes.lemma_B_11_iterated, currently supplies almost-everywhere slice integrability, integrability of the signed spatial integral in time and the dual estimate.",
+    "note": "The missing extraction is weighted L² integrability of the finite angular-mode remainder over the product measure; the sharp pairing bound itself is already reduced to the library.",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Lemma B.12": {
+    "lean": "NavierStokes.lemma_B_12",
+    "status": "reduced",
+    "uses": [
+      "Breakdown.AdjointDefect.adjointDefectBridge_of_pieces",
+      "Breakdown.AdjointDefect.representationHolds_of_density",
+      "Breakdown.AdjointDefect.testFieldDensityHolds_proof",
+      "Breakdown.AdjointDefect.potentialBoundHolds_proof",
+      "Breakdown.AdjointDefect.dualBoundedBound_of_parts",
+      "Breakdown.AdjointDefect.remainderPlainHolds_proof",
+      "Breakdown.AdjointDefect.remainderAzimuthalHolds_proof",
+      "Breakdown.AdjointDefect.pinChargeHolds_proof",
+      "Breakdown.AdjointDefect.freeShiftBoundHolds_proof"
+    ],
+    "differs_from_edition": "The formal adjoint/flow/potential regularity and decomposition hypotheses are explicit. The coefficient budget is the stored defectSum plus pinCharge inequality, including the fitted/free parameter split.",
+    "note": "The adjoint defect bound follows from the specified identities, dual bounds and scalar budget, without assuming an already valid certificate.",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Lemma B.13": {
+    "lean": "NavierStokes.lemma_B_13",
+    "status": "reduced",
+    "uses": [
+      "Breakdown.CellReduction.Instantiation.offsetClause_holds_of",
+      "Breakdown.CellReduction.Instantiation.stepPhase_holds",
+      "Breakdown.CellReduction.Instantiation.pressureFieldRegular_holds",
+      "Breakdown.CellReduction.Instantiation.offsetBallIdentity_holds"
+    ],
+    "differs_from_edition": "The shape and pressure representation and the residual-expansion identities are explicit prerequisites. The error sum (B.59) is represented by the bound in IsOffsetExpansionEntry and the stored adjointOffset.",
+    "note": "Coefficient enclosures and exterior norm bounds yield the offset estimate over the entire formal parameter set.",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  },
+  "Proposition B.14": {
+    "lean": "NavierStokes.proposition_B_14",
+    "status": "reduced",
+    "uses": [
+      "Breakdown.CellLayerSystem.isExtendedCertificate_of_parts",
+      "Breakdown.CellReduction.Instantiation.instantiation_holds_of_open",
+      "Breakdown.CellReduction.Instantiation.offsetClause_holds_of",
+      "Breakdown.CertReduction.gapTransferBridgeHolds_proof",
+      "Breakdown.CertReduction.formShiftBridgeHolds_proof",
+      "Breakdown.CertReduction.frozenFormBridgeHolds_of_convection",
+      "Breakdown.CertReduction.adjointQuadraticBridge_of",
+      "Breakdown.AdjointDefect.adjointDefectBridge_of_pieces",
+      "Breakdown.CellReduction.Instantiation.adjointStructure_holds_of",
+      "Breakdown.CertReduction.smoothShiftPiecesHolds",
+      "Breakdown.PotentialShape.potentialParts_holds"
+    ],
+    "differs_from_edition": "The conclusion chooses a common decay constant: ∃ decay, IsExtendedCertificate {D.cert with decay := decay}. It does not assert that D.cert is valid with its original stored decay field. All formal cell-system conditions are retained.",
+    "note": "The cell data produce a formal extended certificate with the same fields and parameters after choosing a sufficient common decay bound.",
+    "verification": {
+      "current_return_compilation": "not_completed",
+      "historical_checks_are_not_current_checks": true
+    }
+  }
+}

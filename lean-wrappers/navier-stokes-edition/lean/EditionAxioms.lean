@@ -1,0 +1,35 @@
+import EditionStatements
+
+#print axioms NavierStokes.theorem_1_1_space
+#print axioms NavierStokes.lemma_3_2
+#print axioms NavierStokes.lemma_3_3
+#print axioms NavierStokes.lemma_3_5
+#print axioms NavierStokes.lemma_4_5
+#print axioms NavierStokes.theorem_7_1
+#print axioms NavierStokes.corollary_7_2
+#print axioms NavierStokes.lemma_7_4
+#print axioms NavierStokes.proposition_7_5
+#print axioms NavierStokes.lemma_7_6
+#print axioms NavierStokes.lemma_7_7
+#print axioms NavierStokes.proposition_7_8
+#print axioms NavierStokes.proposition_7_9
+#print axioms NavierStokes.proposition_7_10
+#print axioms NavierStokes.proposition_7_11
+#print axioms NavierStokes.proposition_B_1
+#print axioms NavierStokes.lemma_B_2
+#print axioms NavierStokes.lemma_B_3
+#print axioms NavierStokes.proposition_B_4
+#print axioms NavierStokes.lemma_B_5
+#print axioms NavierStokes.lemma_B_6
+#print axioms NavierStokes.lemma_B_7
+#print axioms NavierStokes.proposition_B_8
+#print axioms NavierStokes.lemma_B_9
+#print axioms NavierStokes.lemma_B_10
+#print axioms NavierStokes.lemma_B_12
+#print axioms NavierStokes.lemma_B_13
+#print axioms NavierStokes.proposition_B_14
+#print axioms NavierStokes.conditional_main
+#print axioms NavierStokes.main_of_certificate
+#print axioms NavierStokes.main_of_cell_conditions
+#print axioms NavierStokes.physical_error_bound
+#print axioms NavierStokes.spacePhysicalBlowup_of_spaceBlowup

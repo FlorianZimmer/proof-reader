@@ -1,0 +1,29 @@
+{
+  "challenge_module": "EditionChallenge",
+  "solution_module": "WeakenedMain",
+  "theorem_names": [
+    "NavierStokes.theorem_1_1_space",
+    "NavierStokes.conditional_main"
+  ],
+  "permitted_axioms": [
+    "propext",
+    "Quot.sound",
+    "Classical.choice"
+  ],
+  "external_kernels": {
+    "Lean paranoid": [
+      "leanchecker-paranoid",
+      "--silent",
+      "--from-export"
+    ],
+    "con-leche": [
+      "con-leche"
+    ],
+    "con-ron": [
+      "con-ron"
+    ],
+    "nanoda": [
+      "nanoda_bin"
+    ]
+  }
+}

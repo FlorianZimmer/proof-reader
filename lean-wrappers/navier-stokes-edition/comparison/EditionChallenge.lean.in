@@ -1,0 +1,36 @@
+import EditionContracts
+
+open scoped ContDiff
+
+noncomputable section
+
+namespace NavierStokes
+
+/-- Fixed intended statement for Comparator; the proof is supplied in MainTheorems. -/
+theorem theorem_1_1_space
+    (W : Theorem11.Velocity) (q : Theorem11.Pressure) (S : ℝ)
+    (R : Theorem11.Space ≃ₗᵢ[ℝ] Theorem11.Space) (A : ℝ)
+    (hS : 0 < S)
+    (hW : ContDiff ℝ ∞ (fun z : ℝ × Theorem11.Space => W z.1 z.2))
+    (hq : ContDiff ℝ ∞ (fun z : ℝ × Theorem11.Space => q z.1 z.2))
+    (hEquation : ∀ s y, Theorem11.similarityResidual W q s y = 0)
+    (hDivergence : ∀ s y, Theorem11.divergenceAt (W s) y = 0)
+    (hRecurrence : ∀ s y, W (s + S) y = R (W s (R.symm y)))
+    (hNonzero : ∃ s y, W s y ≠ 0)
+    (hVelocityDecay : ∀ s y, ∀ j ≤ 2,
+      ‖iteratedFDeriv ℝ j (W s) y‖ ≤ A / (1 + ‖y‖) ^ (j + 1))
+    (hPressureGradientDecay : ∀ s y,
+      ‖fderiv ℝ (q s) y‖ ≤ A / (1 + ‖y‖) ^ 3)
+    (ε : ℝ) (hε : 0 < ε) : SpacePhysicalBlowupConclusion W ε := @CHALLENGE_PROOF@
+
+/-- Fixed intended statement for Comparator; the proof is supplied in MainTheorems. -/
+theorem conditional_main
+    (hProfileWithPressureDecay_or_certificate :
+      (∃ (W : Theorem11.Velocity) (q : Theorem11.Pressure) (S : ℝ)
+          (R : Theorem11.Space ≃ₗᵢ[ℝ] Theorem11.Space) (A : ℝ),
+        ProfileWithVelocityDecay W q S R A ∧ PressureGradientDecay q A) ∨
+      (∃ (k : ℕ) (d : Breakdown.ExtendedCertificateData k),
+        Breakdown.IsExtendedCertificate d)) :
+    Breakdown.BreakdownOnSpace ∧ Breakdown.BreakdownOnTorus := @CHALLENGE_PROOF@
+
+end NavierStokes
