@@ -154,6 +154,7 @@ every invariant forcing and every pin target has exactly one invariant bordered
 solution (f,beta). The physical correction is freeInv(S(alpha),f). Normalized
 means multiplier weight one, coincident model and approximate profile, zero gap
 and zero form shift; the theorem does not silently assume those equalities. -/
+set_option maxHeartbeats 1000000 in
 theorem proposition_7_8 {k : ℕ} (d : ExtendedCertificateData k)
     (certificate : IsExtendedCertificate d)
     (unit_multiplier_weight : d.multiplierWeight = 1)
@@ -165,8 +166,8 @@ theorem proposition_7_8 {k : ℕ} (d : ExtendedCertificateData k)
       x.1 ∈ invariantHH d.symmetries ∧ bordered d.toCertificateData α x = (F, pin_target) := by
   have normal : IsNormalExtendedCertificate d :=
     ⟨certificate, unit_multiplier_weight, model_is_profile, zero_gap, zero_form_shift⟩
-  obtain ⟨⟨T, inverse⟩, injective⟩ :=
-    Internal.sectionSevenNodes.borderedInverse d normal α parameter_mem
+  have bordered_holds := Internal.sectionSevenNodes.borderedInverse d normal α parameter_mem
+  obtain ⟨⟨T, inverse⟩, injective⟩ := bordered_holds
   have ht := inverse (F, pin_target) forcing_invariant
   refine ⟨T (F, pin_target), ht, ?_⟩
   intro y hy
@@ -224,8 +225,9 @@ theorem proposition_7_11 (P C : ℝ) (V : VelField) (G : GradField) (H : SecondF
     continuous_representative.comp (continuous_const.mul continuous_id)
   have ae_equal : w =ᵐ[volume] (fun s : ℝ => x (P⁻¹ * s)) := by
     filter_upwards [reads] with s hs
+    have hs' : (velocity (w s) : Space → Space) =ᵐ[volume] V (P⁻¹ * s) := hs
     exact Breakdown.WeakProfile.EditionOrbitAux.eq_of_velocity_ae
-      (hs.trans (represents_field (P⁻¹ * s)).symm)
+      (hs'.trans (represents_field (P⁻¹ * s)).symm)
   have equal : w = (fun s : ℝ => x (P⁻¹ * s)) :=
     (orbit.1.ae_eq_iff_eq volume xcont).mp ae_equal
   obtain ⟨W, q, D, smooth, velocity_eq, decay⟩ := Transport.regularizeKeeping orbit

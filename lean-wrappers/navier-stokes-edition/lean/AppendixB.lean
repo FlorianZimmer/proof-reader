@@ -286,7 +286,11 @@ theorem lemma_B_9 {k : ℕ} (d : ExtendedCertificateData k)
   have h1 := formShiftBridgeHolds_proof k d pieces hstanding hshift q hq σ w G H hw
   have h2 := (frozenFormBridgeHolds_of_convection convectionIdentity_holds)
     k d numbers hstanding hfrozen q hq σ w G H hw
-  have hE : 0 ≤ stationaryEnergy d.weightFn G H := ENNReal.toReal_nonneg
+  have hE : 0 ≤ stationaryEnergy d.weightFn G H :=
+    add_nonneg (MeasureTheory.integral_nonneg fun _ => sq_nonneg _)
+      (MeasureTheory.integral_nonneg fun y => mul_nonneg
+        (show 0 ≤ d.weightFn y by rw [hstanding.weightFn_const]; exact hstanding.weight_pos.le)
+        (Finset.sum_nonneg fun _ _ => sq_nonneg _))
   have hsum : -(d.modelFormBound + d.formShift) * stationaryEnergy d.weightFn G H ≤
       frozenForm (d.profile q σ) w G H := by linarith
   exact le_trans (mul_le_mul_of_nonneg_right (neg_le_neg hc₃) hE) hsum

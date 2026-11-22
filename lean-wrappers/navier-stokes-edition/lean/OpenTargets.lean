@@ -287,15 +287,15 @@ def lemma_4_4_target : Prop :=
   ∀ (W : Theorem11.Velocity) (q : Theorem11.Pressure) (S : ℝ)
     (R : Breakdown.Space ≃ₗᵢ[ℝ] Breakdown.Space) (A : ℝ),
     Theorem11.IsPaperProfile W q S R A →
-    let λ := Real.exp (-S)
+    let lam := Real.exp (-S)
     let F := Breakdown.Freq.realization.F
     let ρ := Breakdown.Freq.rotX R
     let u := Analysis.profileCurve W
     let free := (ρ.symm.toContinuousLinearEquiv : Breakdown.Freq.X →L[ℝ] Breakdown.Freq.X).comp
-      ((F.D λ).comp (F.G (1 - λ)))
-    IsUnit (1 - (2 : ℝ) • F.toHeatBilinear.pieceBil (1 - λ)
-      (Breakdown.toPiece (1 - λ) u)) ∧
-    IsCompactOperator (Analysis.monodromy F ρ u λ - free) ∧ ‖free‖ ≤ λ ^ (1 / 4 : ℝ)
+      ((F.D lam).comp (F.G (1 - lam)))
+    IsUnit (1 - (2 : ℝ) • F.toHeatBilinear.pieceBil (1 - lam)
+      (Breakdown.toPiece (1 - lam) u)) ∧
+    IsCompactOperator (Analysis.monodromy F ρ u lam - free) ∧ ‖free‖ ≤ lam ^ (1 / 4 : ℝ)
 
 /-- Lemma 4.6: normalization of the forced equation gives the recurrence
 χ_(n+1)=Mχ_n+f_n and a forcing bound uniform in n, g and χ. The forcing is
@@ -305,34 +305,34 @@ def lemma_4_6_target : Prop :=
   ∀ (X : Type) [NormedAddCommGroup X] [InnerProductSpace ℝ X] [CompleteSpace X]
     (F : Breakdown.MildFramework X) (ρ : X ≃ₗᵢ[ℝ] X) (w : ℝ → X) (S κ : ℝ),
     F.Commutes ρ → F.IsOrbit ρ w S → 0 < κ → κ < (1 / 4 : ℝ) →
-    let λ := Real.exp (-S)
+    let lam := Real.exp (-S)
     let u := F.selfSimilar w 0
-    let U := Analysis.periodResolvent F.toHeatBilinear u (1 - λ)
-    IsUnit (1 - (2 : ℝ) • F.toHeatBilinear.pieceBil (1 - λ)
-      (Breakdown.toPiece (1 - λ) u)) ∧
+    let U := Analysis.periodResolvent F.toHeatBilinear u (1 - lam)
+    IsUnit (1 - (2 : ℝ) • F.toHeatBilinear.pieceBil (1 - lam)
+      (Breakdown.toPiece (1 - lam) u)) ∧
     ∃ C : ℝ,
       (∀ g h : ℝ → X, Analysis.WeightedCurve κ g → Analysis.WeightedCurve κ h → ∀ n,
-        Analysis.recurrenceForcing F ρ u λ (g + h) n =
-          Analysis.recurrenceForcing F ρ u λ g n + Analysis.recurrenceForcing F ρ u λ h n) ∧
+        Analysis.recurrenceForcing F ρ u lam (g + h) n =
+          Analysis.recurrenceForcing F ρ u lam g n + Analysis.recurrenceForcing F ρ u lam h n) ∧
       (∀ c : ℝ, ∀ g : ℝ → X, Analysis.WeightedCurve κ g → ∀ n,
-        Analysis.recurrenceForcing F ρ u λ (c • g) n =
-          c • Analysis.recurrenceForcing F ρ u λ g n) ∧
+        Analysis.recurrenceForcing F ρ u lam (c • g) n =
+          c • Analysis.recurrenceForcing F ρ u lam g n) ∧
       ∀ (g v : ℝ → X) (χ : X), Analysis.WeightedCurve κ g →
       ContinuousOn v (Ico 0 1) →
       (∀ t ∈ Ico (0 : ℝ) 1,
         v t = F.G t χ + (2 : ℝ) • Analysis.duhamel F.toHeatBilinear u v t + g t) →
-      let χn := fun n => Analysis.normalizedPiece F ρ λ v n 0 -
-        Analysis.normalizedPiece F ρ λ g n 0
+      let χn := fun n => Analysis.normalizedPiece F ρ lam v n 0 -
+        Analysis.normalizedPiece F ρ lam g n 0
       χn 0 = χ ∧ ∀ n : ℕ,
-        (∀ s : Icc (0 : ℝ) (1 - λ),
-          Analysis.normalizedPiece F ρ λ v n s =
-            U (F.toHeatBilinear.pieceFree (1 - λ) (χn n)) s +
-              U (Breakdown.toPiece (1 - λ) (Analysis.normalizedPiece F ρ λ g n)) s) ∧
-        χn (n + 1) = Analysis.monodromy F ρ u λ (χn n) +
-          Analysis.recurrenceForcing F ρ u λ g n ∧
-        ‖Breakdown.toPiece (1 - λ) (Analysis.normalizedPiece F ρ λ g n)‖ +
-          ‖Analysis.recurrenceForcing F ρ u λ g n‖ ≤
-            C * (λ ^ κ) ^ n * Analysis.weightedNorm κ g
+        (∀ s : Icc (0 : ℝ) (1 - lam),
+          Analysis.normalizedPiece F ρ lam v n s =
+            U (F.toHeatBilinear.pieceFree (1 - lam) (χn n)) s +
+              U (Breakdown.toPiece (1 - lam) (Analysis.normalizedPiece F ρ lam g n)) s) ∧
+        χn (n + 1) = Analysis.monodromy F ρ u lam (χn n) +
+          Analysis.recurrenceForcing F ρ u lam g n ∧
+        ‖Breakdown.toPiece (1 - lam) (Analysis.normalizedPiece F ρ lam g n)‖ +
+          ‖Analysis.recurrenceForcing F ρ u lam g n‖ ≤
+            C * (lam ^ κ) ^ n * Analysis.weightedNorm κ g
 
 /-- Lemma 4.7: the two weighted bilinear estimates and the free heat estimate
 on [0,1). Open: the local integral theorem has to be integrated against the

@@ -9,7 +9,8 @@ noncomputable section
 namespace NavierStokes.Analysis
 
 /-- L^(3/2) is a normed space since its exponent is at least one. -/
-instance factOneLeThreeHalves : Fact ((1 : ℝ≥0∞) ≤ 3 / 2) := ⟨by norm_num⟩
+instance factOneLeThreeHalves : Fact ((1 : ℝ≥0∞) ≤ 3 / 2) := ⟨by
+  rw [ENNReal.le_div_iff_mul_le (by simp) (by simp)]; norm_num⟩
 
 /-- B(u,v)(t) is the quadratic Duhamel integral with initial time zero. -/
 def duhamel {X : Type} [NormedAddCommGroup X] [NormedSpace ℝ X] [CompleteSpace X]
@@ -166,33 +167,33 @@ def periodResolvent {X : Type} [NormedAddCommGroup X] [NormedSpace ℝ X]
 /-- The paper's monodromy, before replacing it by a product of short steps. -/
 def monodromy {X : Type} [NormedAddCommGroup X] [InnerProductSpace ℝ X]
     [CompleteSpace X] (F : Breakdown.MildFramework X) (ρ : X ≃ₗᵢ[ℝ] X)
-    (u : ℝ → X) (λ : ℝ) : X →L[ℝ] X :=
+    (u : ℝ → X) (lam : ℝ) : X →L[ℝ] X :=
   (ρ.symm.toContinuousLinearEquiv : X →L[ℝ] X).comp
-    ((F.D λ).comp ((Breakdown.pieceEnd (1 - λ)).comp
-      ((periodResolvent F.toHeatBilinear u (1 - λ)).comp
-        (F.toHeatBilinear.pieceFree (1 - λ)))))
+    ((F.D lam).comp ((Breakdown.pieceEnd (1 - lam)).comp
+      ((periodResolvent F.toHeatBilinear u (1 - lam)).comp
+        (F.toHeatBilinear.pieceFree (1 - lam)))))
 
 /-- Restrict a physical curve to its nth similarity interval and normalize it. -/
 def normalizedPiece {X : Type} [NormedAddCommGroup X] [InnerProductSpace ℝ X]
     [CompleteSpace X] (F : Breakdown.MildFramework X) (ρ : X ≃ₗᵢ[ℝ] X)
-    (λ : ℝ) (v : ℝ → X) (n : ℕ) (s : ℝ) : X :=
-  ((ρ.symm : X → X)^[n]) (F.D (λ ^ n) (v (1 - λ ^ n + λ ^ n * s)))
+    (lam : ℝ) (v : ℝ → X) (n : ℕ) (s : ℝ) : X :=
+  ((ρ.symm : X → X)^[n]) (F.D (lam ^ n) (v (1 - lam ^ n + lam ^ n * s)))
 
 /-- Forcing sequence (4.13), defined from g alone. -/
 def recurrenceForcing {X : Type} [NormedAddCommGroup X] [InnerProductSpace ℝ X]
     [CompleteSpace X] (F : Breakdown.MildFramework X) (ρ : X ≃ₗᵢ[ℝ] X)
-    (u : ℝ → X) (λ : ℝ) (g : ℝ → X) (n : ℕ) : X :=
-  ρ.symm (F.D λ (Breakdown.pieceEnd (1 - λ)
-    ((periodResolvent F.toHeatBilinear u (1 - λ))
-      (Breakdown.toPiece (1 - λ) (normalizedPiece F ρ λ g n)) -
-        Breakdown.toPiece (1 - λ) (normalizedPiece F ρ λ g n))))
+    (u : ℝ → X) (lam : ℝ) (g : ℝ → X) (n : ℕ) : X :=
+  ρ.symm (F.D lam (Breakdown.pieceEnd (1 - lam)
+    ((periodResolvent F.toHeatBilinear u (1 - lam))
+      (Breakdown.toPiece (1 - lam) (normalizedPiece F ρ lam g n)) -
+        Breakdown.toPiece (1 - lam) (normalizedPiece F ρ lam g n))))
 
 /-- Physical symmetrized convection of two L-periodic Fourier fields. -/
 def torusConvection (L : ℝ) (u v : Breakdown.Periodic.V)
     (x : Breakdown.Space) : Breakdown.Space :=
   L⁻¹ • ∑ i : Fin 3,
-    ((torusValue u (L⁻¹ • x)) i) • torusDerivative v i (L⁻¹ • x) +
-    ((torusValue v (L⁻¹ • x)) i) • torusDerivative u i (L⁻¹ • x)
+    (((torusValue u (L⁻¹ • x)) i) • torusDerivative v i (L⁻¹ • x) +
+      ((torusValue v (L⁻¹ • x)) i) • torusDerivative u i (L⁻¹ • x))
 
 /-- A tensor is indexed by output component first and divergence direction second. -/
 abbrev Tensor := Fin 3 → Fin 3 → ℝ
@@ -250,10 +251,10 @@ def ProjectedHeatSpec (τ : ℝ) (f : Breakdown.Space → Breakdown.Space)
     Integrable (fun x => inner ℝ (f x) (Breakdown.Freq.phiX τ ψ x)) ∧
     inner ℝ v ψ = ∫ x, inner ℝ (f x) (Breakdown.Freq.phiX τ ψ x)
 
+open Classical in
 /-- The projected-heat element when its duality representative exists. Targets
 using this definition also require `ProjectedHeatSpec`; the fallback gives no
 existence or estimate. -/
-open Classical in
 def projectedHeat (τ : ℝ) (f : Breakdown.Space → Breakdown.Space) : Breakdown.Freq.X :=
   if h : ∃ v, ProjectedHeatSpec τ f v then h.choose else 0
 
@@ -265,8 +266,8 @@ def ProjectedTorusSpec (L τ : ℝ) (f : Breakdown.Space → Breakdown.Space)
       Real.exp (-(4 * Real.pi ^ 2 * τ * ‖Breakdown.Periodic.freq k‖ ^ 2 / L ^ 2)) •
         Breakdown.Periodic.divFree k (torusCoefficient L f k)
 
-/-- Periodic projected heat element; its specification is required separately. -/
 open Classical in
+/-- Periodic projected heat element; its specification is required separately. -/
 def projectedTorus (L τ : ℝ) (f : Breakdown.Space → Breakdown.Space) : Breakdown.Periodic.V :=
   if h : ∃ v, ProjectedTorusSpec L τ f v then h.choose else 0
 
@@ -276,10 +277,10 @@ def interactionForce (W : Theorem11.Velocity) (L t : ℝ)
     (g : Breakdown.Periodic.V) (v : Breakdown.Freq.X)
     (x : Breakdown.Space) : Breakdown.Space :=
   ∑ i : Fin 3,
-    (cutoffProfile W (L / 8) t x) i •
+    ((cutoffProfile W (L / 8) t x) i •
       (L⁻¹ • torusDerivative g i (L⁻¹ • x) + Breakdown.Freq.partialX i v x) +
     (torusValue g (L⁻¹ • x) + Breakdown.Freq.velocity v x) i •
-      fderiv ℝ (cutoffProfile W (L / 8) t) x (Breakdown.unitVector i)
+      fderiv ℝ (cutoffProfile W (L / 8) t) x (Breakdown.unitVector i))
 
 /-- Aζ of §6.3. -/
 def wholeInteraction (W : Theorem11.Velocity) (L : ℝ)
