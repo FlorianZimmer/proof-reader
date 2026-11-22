@@ -125,8 +125,18 @@ theorem energyBoundedOn_of_through {T S : ℝ} {v : Velocity}
   obtain ⟨E, _, hE⟩ := hv
   exact ⟨E, fun t ht => hE t ⟨ht.1, ht.2.trans hST⟩⟩
 
-/-- Theorem 1.1 on R³ for a profile of the library's class, in the paper's
-words: there exist a divergence-free datum u₀ in C_c^∞(R³; R³), within ε of the
+/-- Theorem 1.1 on R³, conditional on the profile premise.
+
+Conditional on the profile premise `IsLibraryProfile W q P R A`: a smooth
+pair (W, q) on ℝ × R³, not identically zero, solving the profile equations (1.2)
+(the similarity residual vanishes and div W = 0), periodic up to the isometry
+R with period P > 0, W(s+P, y) = R W(s, R⁻¹y), with the decay bounds
+‖∇ʲW(s,y)‖ ≤ A (1+|y|)^-(j+1) for j = 0, 1, 2 and |∇q(s,y)| ≤ A (1+|y|)^-3.
+This is the premise of the authors' route (`Breakdown.IsSimilarityProfile`);
+it is stronger than the printed hypothesis (1.2)-(1.3), see
+`Theorem11.OpenTarget.PaperSpace`.
+
+Under this premise, for every ε > 0, in the paper's words: there exist a divergence-free datum u₀ in C_c^∞(R³; R³), within ε of the
 profile's slice W(0) in the Ḣ¹ seminorm, and a smooth solution u of the
 Navier–Stokes equations on [0,1) × R³ with datum u₀ and finite energy, which
 blows up at time 1: there exist κ in (0, 1/4) and constants 0 < c ≤ C with
@@ -202,8 +212,18 @@ theorem theorem11SpaceBlowup : Theorem11SpaceBlowup := by
     rw [hvt]
     exact hread S t htS
 
-/-- The requested endpoint `Theorem11Space`: the first part of
-`theorem11SpaceBlowup`. -/
+/-- The requested endpoint `Theorem11Space`, the first part of
+`theorem11SpaceBlowup`. Conditional on the profile premise `IsLibraryProfile W q P R A`: a smooth
+pair (W, q) on ℝ × R³, not identically zero, solving the profile equations (1.2)
+(the similarity residual vanishes and div W = 0), periodic up to the isometry
+R with period P > 0, W(s+P, y) = R W(s, R⁻¹y), with the decay bounds
+‖∇ʲW(s,y)‖ ≤ A (1+|y|)^-(j+1) for j = 0, 1, 2 and |∇q(s,y)| ≤ A (1+|y|)^-3.
+This is the premise of the authors' route (`Breakdown.IsSimilarityProfile`);
+it is stronger than the printed hypothesis (1.2)-(1.3), see
+`Theorem11.OpenTarget.PaperSpace`.
+Under it: one smooth finite-energy solution on [0,1) from a compactly supported
+datum ε-close to W(0) in Ḣ¹, with the two-sided rate c(1-t)^(-1/4) ≤ ‖∇u(t)‖₂ ≤
+C(1-t)^(-1/4) and the self-similar convergence rate (1-t)^κ. -/
 theorem theorem11Space : Theorem11Space := by
   intro W q P R A h ε hε
   obtain ⟨u₀, u, p, c, C, κ, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12, h13, -, -⟩ :=

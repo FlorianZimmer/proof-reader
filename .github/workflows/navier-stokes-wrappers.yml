@@ -10,7 +10,8 @@ name: Compile the Navier–Stokes Theorem 1.1 wrapper and judge its global endpo
     - claude/navier-stokes-*
     paths:
     - .github/workflows/navier-stokes-wrappers.yml
-    - lean-wrappers/navier-stokes/**
+    - lean-wrappers/navier-stokes/theorem11/**
+    - lean-wrappers/navier-stokes/probes/**
 permissions:
   contents: read
 concurrency:
