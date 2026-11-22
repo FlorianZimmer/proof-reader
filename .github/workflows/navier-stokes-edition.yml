@@ -78,6 +78,8 @@ jobs:
           echo "$m exit $c after $(( $(date +%s) - start ))s"
           grep -E '^(error|warning: declaration uses .sorry.)' "$OUT/build-$m.log" | head -8 || true
         done
+        ok=true; for f in "$OUT"/build-*.exit; do [ "$(cat "$f")" = 0 ] || ok=false; done
+        echo "ALL_OK=$ok" >> "$GITHUB_ENV"; echo "all modules compiled: $ok"
     - name: Print and check the axioms of every proved numbered result
       if: always()
       working-directory: ${{ env.NS }}/lean
@@ -111,9 +113,11 @@ jobs:
         print(json.dumps({k: v for k, v in report.items() if k != "results"}, indent=2))
         bad = [n for n, r in rows.items() if not r["pass"]]
         print("not passing:", bad)
+        if bad or report["errors_in_report"] or not report["all_compiled"]:
+            raise SystemExit("Some module failed to compile, or some result is missing from the axiom report or uses other axioms")
         PY
     - name: Build lean4export with Lean v4.33.1
-      if: always()
+      if: always() && env.ALL_OK == 'true'
       run: |
         git init -q "$RUNNER_TEMP/export" && cd "$RUNNER_TEMP/export"
         git remote add origin https://github.com/leanprover/lean4export.git
@@ -121,7 +125,7 @@ jobs:
         echo 'leanprover/lean4:v4.33.1' > lean-toolchain
         lake build && ls .lake/build/bin
     - name: Write the exports of the challenge, the solution and the weakened control
-      if: always()
+      if: always() && env.ALL_OK == 'true'
       timeout-minutes: 120
       working-directory: ${{ env.NS }}/lean
       run: |
@@ -139,7 +143,7 @@ jobs:
         ex WeakenedMain control
         ls -l "$RUNNER_TEMP/x"; (cd "$RUNNER_TEMP/x" && sha256sum *.export) | tee "$OUT/exports.sha256"
     - name: Install the sandbox Comparator uses, and Lean v4.36.0
-      if: always()
+      if: always() && env.ALL_OK == 'true'
       run: |
         sudo apt-get update -qq && sudo apt-get install -y -qq bubblewrap
         sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
@@ -151,7 +155,7 @@ jobs:
         echo "$bin" >> "$GITHUB_PATH"
         for k in leanchecker-paranoid nanoda_bin con-leche con-ron; do command -v "$k" || { echo "missing $k"; exit 1; }; done | tee "$OUT/kernels.txt"
     - name: Comparator on the two main statements and on the weakened controls
-      if: always()
+      if: always() && env.ALL_OK == 'true'
       timeout-minutes: 200
       working-directory: ${{ runner.temp }}/judge
       run: |
