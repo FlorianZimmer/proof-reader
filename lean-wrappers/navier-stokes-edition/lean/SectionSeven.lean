@@ -149,12 +149,12 @@ theorem lemma_7_7 {k : ℕ} (d : ExtendedCertificateData k)
     fun u hu => ((n.invariance d certificate α parameter_mem).1 u hu).1,
     n.convectionCompact d certificate α parameter_mem⟩
 
+set_option maxHeartbeats 1000000 in
 /-- Proposition 7.8 in forcing coordinates: for a normalized formal certificate,
 every invariant forcing and every pin target has exactly one invariant bordered
 solution (f,beta). The physical correction is freeInv(S(alpha),f). Normalized
 means multiplier weight one, coincident model and approximate profile, zero gap
 and zero form shift; the theorem does not silently assume those equalities. -/
-set_option maxHeartbeats 1000000 in
 theorem proposition_7_8 {k : ℕ} (d : ExtendedCertificateData k)
     (certificate : IsExtendedCertificate d)
     (unit_multiplier_weight : d.multiplierWeight = 1)
